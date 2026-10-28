@@ -5,114 +5,30 @@
     <meta charset="utf-8">
     <meta name="viewport"
         content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-    <meta name="theme-color" content="#141417">
+    <meta name="theme-color" content="#03050b">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>GYRON Pocket</title>
+    <title>Night Yard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,700&family=Silkscreen:wght@400;700&display=swap">
+        href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
     <style>
-        /* Layout: an original handheld console. Portrait = tall body (screen on top, controls below);
-   landscape = wide body (D-pad left, square screen centre, buttons right). Light comes from
-   the phone's tilt via --gx / --gy, which move every reflection. */
+     /* Layout: full-screen canvas game, HUD pinned to the corners, contextual Use button bottom-right. */
         :root {
-            --desk: #141417;
-            --gx: 0;
-            --gy: 0;
-            --scr: 300px;
-            --font-print: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
-            --font-lcd: "Silkscreen", "Courier New", ui-monospace, monospace;
+            --bg: #03050b;
+            --ink: #e6e9ef;
+            --ink-dim: #8d97a8;
             --sodium: #ffb056;
+            --ok: #7dff9a;
+            --warn: #ffa21a;
+            --danger: #ff3b30;
+            --panel: rgba(10, 13, 20, 0.78);
+            --line: rgba(255, 176, 86, 0.22);
+            --font-display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
+            --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
             color-scheme: dark;
-        }
-
-        /* Colourways */
-        .console[data-shell="cream"] {
-            --shell: #e8e0cb;
-            --shell-hi: #f8f3e6;
-            --shell-lo: #c6bca2;
-            --bezel: #7a2230;
-            --bezel-hi: #9b3343;
-            --bezel-ink: #f3ead5;
-            --btn: #8a1f2e;
-            --btn-hi: #d0566a;
-            --btn-lo: #4f0f19;
-            --dpad: #7a1c2a;
-            --dpad-hi: #b0475a;
-            --dpad-lo: #46101a;
-            --pill: #8a1f2e;
-            --print: #7a2230;
-        }
-
-        .console[data-shell="grey"] {
-            --shell: #cdcac2;
-            --shell-hi: #e8e5de;
-            --shell-lo: #a6a399;
-            --bezel: #5d5f70;
-            --bezel-hi: #757789;
-            --bezel-ink: #d4d6e2;
-            --btn: #8b1f48;
-            --btn-hi: #cf5b86;
-            --btn-lo: #4c0c25;
-            --dpad: #1f2024;
-            --dpad-hi: #50525a;
-            --dpad-lo: #08080a;
-            --pill: #85838c;
-            --print: #2c3a8c;
-        }
-
-        .console[data-shell="pink"] {
-            --shell: #e3779f;
-            --shell-hi: #f7a9c6;
-            --shell-lo: #b84f78;
-            --bezel: #1c1b20;
-            --bezel-hi: #3a3841;
-            --bezel-ink: #e2dfe7;
-            --btn: #222126;
-            --btn-hi: #66646d;
-            --btn-lo: #050506;
-            --dpad: #222126;
-            --dpad-hi: #56545d;
-            --dpad-lo: #050506;
-            --pill: #2a292f;
-            --print: #4a1a2f;
-        }
-
-        .console[data-shell="sand"] {
-            --shell: #e7d6b0;
-            --shell-hi: #f7ecd4;
-            --shell-lo: #c3ab7e;
-            --bezel: #3c3f47;
-            --bezel-hi: #585c67;
-            --bezel-ink: #ecdcb8;
-            --btn: #d0252c;
-            --btn-hi: #ff7568;
-            --btn-lo: #7a0f14;
-            --dpad: #d0252c;
-            --dpad-hi: #ff7568;
-            --dpad-lo: #7a0f14;
-            --pill: #4a4d55;
-            --print: #a8191f;
-        }
-
-        .console[data-shell="graphite"] {
-            --shell: #33363e;
-            --shell-hi: #525661;
-            --shell-lo: #1b1d22;
-            --bezel: #15161a;
-            --bezel-hi: #2c2e35;
-            --bezel-ink: #ffb056;
-            --btn: #f08a2a;
-            --btn-hi: #ffd29a;
-            --btn-lo: #8f4508;
-            --dpad: #17181c;
-            --dpad-hi: #43454e;
-            --dpad-lo: #050506;
-            --pill: #55585f;
-            --print: #a3a9b5;
         }
 
         * {
@@ -128,1199 +44,346 @@
             height: 100%;
             margin: 0;
             overflow: hidden;
-            background: radial-gradient(120% 90% at 50% 30%, #222228, var(--desk) 70%);
-            color: #e6e9ef;
+            background: var(--bg);
+            color: var(--ink);
+            font: 15px/1.45 var(--font-display);
             overscroll-behavior: none;
             -webkit-user-select: none;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
+        }
+
+        canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            touch-action: none;
+        }
+
+        .hud {
+            position: fixed;
+            top: calc(env(safe-area-inset-top, 0px) + 10px);
+            left: max(16px, env(safe-area-inset-left, 0px));
+            right: max(16px, env(safe-area-inset-right, 0px));
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px 12px;
+            pointer-events: none;
+        }
+
+        .lvl {
+            display: flex;
+            flex-direction: column;
+            line-height: 1;
+            gap: 3px;
+        }
+
+        .lvl small {
+            font: 500 11px/1 var(--font-mono);
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--sodium);
+        }
+
+        .lvl strong {
+            font: 700 clamp(18px, 3.4vw, 24px)/1 var(--font-display);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+            justify-content: flex-end;
+            pointer-events: auto;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 9px;
+            border-radius: 6px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            font: 500 11.5px/1 var(--font-mono);
+            font-variant-numeric: tabular-nums;
+            color: var(--ink-dim);
+        }
+
+        .chip b {
+            color: var(--ink);
+            font-weight: 500;
+        }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--ink-dim);
+        }
+
+        .dot.live {
+            background: var(--ok);
+            box-shadow: 0 0 8px var(--ok);
+        }
+
+        .dot.warn {
+            background: var(--warn);
+        }
+
+        .lock {
+            width: 9px;
+            height: 8px;
+            border: 1.5px solid var(--ink-dim);
+            border-radius: 2px;
+            position: relative;
+            margin-top: 3px;
+        }
+
+        .lock::before {
+            content: "";
+            position: absolute;
+            left: 0.5px;
+            top: -6px;
+            width: 5px;
+            height: 5px;
+            border: 1.5px solid var(--ink-dim);
+            border-bottom: 0;
+            border-radius: 4px 4px 0 0;
         }
 
         button {
-            font: inherit;
-            color: inherit;
-            background: none;
-            border: 0;
-            padding: 0;
-            margin: 0;
+            font: 600 13px/1 var(--font-display);
+            letter-spacing: 0.04em;
+            color: var(--ink);
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 8px 11px;
             cursor: pointer;
             touch-action: none;
-            -webkit-tap-highlight-color: transparent;
         }
 
         button:focus-visible {
             outline: 2px solid var(--sodium);
-            outline-offset: 3px;
+            outline-offset: 2px;
         }
 
-        .console {
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .pad {
+            position: fixed;
+            left: calc(max(16px, env(safe-area-inset-left, 0px)) + 4px);
+            bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 4px);
+            display: flex;
+            gap: 12px;
+        }
+
+        .pad button {
+            width: 64px;
+            height: 56px;
+            font-size: 20px;
+            border-radius: 12px;
+        }
+
+        .use {
+            position: fixed;
+            right: calc(max(16px, env(safe-area-inset-right, 0px)) + 4px);
+            bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 4px);
+            min-width: 108px;
+            height: 56px;
+            padding: 0 18px;
+            border-radius: 12px;
+            font-size: 15px;
+            text-transform: uppercase;
+            background: var(--sodium);
+            border-color: transparent;
+            color: #1a1006;
+            box-shadow: 0 0 22px rgba(255, 176, 86, 0.45);
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 78px);
+            transform: translateX(-50%);
+            max-width: min(520px, calc(100% - 32px));
+            padding: 9px 14px;
+            border-radius: 8px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            color: var(--ink);
+            font: 500 14px/1.35 var(--font-display);
+            text-align: center;
+            text-wrap: balance;
+            transition: opacity 0.35s;
+            pointer-events: none;
+        }
+
+        .overlay {
             position: fixed;
             inset: 0;
             display: grid;
             place-items: center;
-            padding: calc(env(safe-area-inset-top, 0px) + 8px) max(8px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 8px) max(8px, env(safe-area-inset-left, 0px));
+            z-index: 5;
+            padding: 16px;
+            background: rgba(2, 3, 8, 0.78);
         }
 
-        /* ---------- Shell ---------- */
-        .shell {
-            position: relative;
-            width: min(100%, 540px);
-            height: 100%;
-            border-radius: 18px 18px 76px 18px;
-            background:
-                linear-gradient(160deg, var(--shell-hi) 0%, var(--shell) 32%, var(--shell) 70%, var(--shell-lo) 100%);
-            box-shadow:
-                inset 0 2px 0 rgba(255, 255, 255, 0.55),
-                inset 2px 0 0 rgba(255, 255, 255, 0.25),
-                inset -3px 0 4px rgba(0, 0, 0, 0.12),
-                inset 0 -5px 8px rgba(0, 0, 0, 0.18),
-                0 2px 0 var(--shell-lo),
-                0 28px 50px rgba(0, 0, 0, 0.55),
-                0 8px 14px rgba(0, 0, 0, 0.35);
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 26px auto minmax(10px, 0.55fr) auto auto 1fr;
-            grid-template-areas: "top top" "bezel bezel" ". ." "dpad ab" "pills pills" ". .";
-            padding: 0 18px 26px;
-            isolation: isolate;
-            overflow: hidden;
-        }
-
-        .land .shell {
-            width: 100%;
-            border-radius: 44px;
-            grid-template-columns: 1fr auto 1fr;
-            grid-template-rows: 22px 1fr auto;
-            grid-template-areas: "top bezel top2" "dpad bezel ab" "speaker bezel pills";
-            padding: 0 16px 16px;
-            column-gap: 14px;
-        }
-
-        /* Plastic grain */
-        .grain {
-            position: absolute;
-            inset: 0;
-            z-index: 0;
-            pointer-events: none;
-            border-radius: inherit;
-            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.5 0 0 0 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-            opacity: 0.22;
-            mix-blend-mode: multiply;
-        }
-
-        /* Moving highlight on the plastic: follows the phone's tilt */
-        .sheen {
-            position: absolute;
-            inset: 0;
-            z-index: 0;
-            pointer-events: none;
-            border-radius: inherit;
-            overflow: hidden;
-        }
-
-        .sheen::before {
-            content: "";
-            position: absolute;
-            width: 150%;
-            height: 110%;
-            left: -40%;
-            top: -45%;
-            background: radial-gradient(closest-side, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.12) 45%, rgba(255, 255, 255, 0) 72%);
-            transform: translate(calc(var(--gx) * -22%), calc(var(--gy) * -18%));
-            mix-blend-mode: soft-light;
-        }
-
-        .sheen::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            border-radius: inherit;
-            box-shadow: inset calc(var(--gx) * -3px + 1px) calc(var(--gy) * -3px + 2px) 3px rgba(255, 255, 255, 0.35);
-        }
-
-        .topedge,
-        .bezel,
-        .dpad,
-        .ab,
-        .pills {
-            position: relative;
-            z-index: 1;
-        }
-
-        /* Top edge: power switch and a moulded ridge */
-        .topedge {
-            grid-area: top;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding-left: 10px;
-        }
-
-        .land .topedge {
-            padding-left: 18px;
-        }
-
-        .topedge::after {
-            content: "";
-            flex: 1;
-            height: 2px;
-            margin-right: 10px;
-            border-radius: 2px;
-            background: linear-gradient(90deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.04));
-            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
-        }
-
-        .power {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font: 600 9px/1 var(--font-print);
-            letter-spacing: 0.12em;
-            color: var(--print);
-            opacity: 0.85;
-        }
-
-        .power .slot {
-            position: relative;
-            width: 34px;
-            height: 12px;
-            border-radius: 6px;
-            background: var(--shell-lo);
-            box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.5);
-        }
-
-        .power .knob {
-            position: absolute;
-            top: 1px;
-            left: 2px;
-            width: 14px;
-            height: 10px;
-            border-radius: 4px;
-            background: linear-gradient(var(--shell-hi), var(--shell-lo));
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-            transition: transform 0.25s cubic-bezier(.3, 1.5, .6, 1);
-        }
-
-        .console.on .power .knob {
-            transform: translateX(16px);
-        }
-
-        .console:not(.on) .power .slot {
-            animation: nudge 1.6s ease-in-out infinite;
-        }
-
-        @keyframes nudge {
-
-            0%,
-            100% {
-                box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.45), 0 0 0 0 rgba(255, 176, 86, 0);
-            }
-
-            50% {
-                box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.45), 0 0 0 4px rgba(255, 176, 86, 0.45);
-            }
-        }
-
-        /* ---------- Bezel + screen ---------- */
-        .bezel {
-            grid-area: bezel;
-            justify-self: center;
-            position: relative;
-            padding: 22px 20px 30px 30px;
-            border-radius: 10px 10px 40px 10px;
-            background: linear-gradient(170deg, var(--bezel-hi), var(--bezel) 40%, var(--bezel) 100%);
-            box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.12), 0 1px 0 rgba(255, 255, 255, 0.45);
-        }
-
-        .land .bezel {
-            align-self: center;
-            padding: 20px 22px 26px 30px;
+        .card {
+            width: min(420px, 100%);
+            max-height: 100%;
+            overflow: auto;
+            padding: 22px 20px 18px;
             border-radius: 14px;
-        }
-
-        .bezel-top {
-            position: absolute;
-            left: 30px;
-            right: 20px;
-            top: 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font: 600 7.5px/1 var(--font-print);
-            letter-spacing: 0.16em;
-            color: var(--bezel-ink);
-            opacity: 0.8;
-            white-space: nowrap;
-        }
-
-        .bezel-top::before,
-        .bezel-top::after {
-            content: "";
-            flex: 1;
-            height: 0;
-            border-top: 1px solid var(--bezel-ink);
-            border-bottom: 1px solid var(--bezel-ink);
-            padding-top: 2px;
-            opacity: 0.45;
-        }
-
-        .led-wrap {
-            position: absolute;
-            left: 7px;
-            top: 46%;
+            background: #0b0e15;
+            border: 1px solid var(--line);
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            font: 600 6px/1 var(--font-print);
-            letter-spacing: 0.1em;
-            color: var(--bezel-ink);
-            opacity: 0.85;
+            gap: 11px;
         }
 
-        .land .led-wrap {
-            left: 6px;
-        }
-
-        .led {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: #3a0d0d;
-            box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6);
-            transition: background 0.3s, box-shadow 0.3s;
-        }
-
-        .console.on .led {
-            background: #ff3b30;
-            box-shadow: 0 0 6px #ff3b30, 0 0 14px rgba(255, 59, 48, 0.55), inset 0 -1px 1px rgba(0, 0, 0, 0.3);
-        }
-
-        .led.danger {
-            animation: ledpulse 0.4s ease-in-out infinite alternate;
-        }
-
-        @keyframes ledpulse {
-            to {
-                opacity: 0.35;
-            }
-        }
-
-        .brand {
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 7px;
-            display: flex;
-            justify-content: center;
-            align-items: baseline;
-            gap: 6px;
-            color: var(--bezel-ink);
-        }
-
-        .brand b {
-            font: italic 700 15px/1 var(--font-print);
-            letter-spacing: 0.06em;
-        }
-
-        .brand span {
-            font: 600 8px/1 var(--font-print);
+        .card small {
+            font: 500 11px/1 var(--font-mono);
             letter-spacing: 0.14em;
-            padding: 2px 5px;
-            border: 1px solid var(--bezel-ink);
-            border-radius: 3px;
-        }
-
-        .screen {
-            position: relative;
-            width: var(--scr);
-            height: var(--scr);
-            border-radius: 4px;
-            overflow: hidden;
-            background: #000;
-            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 0 3px rgba(255, 255, 255, 0.08);
-            touch-action: none;
-        }
-
-        .screen canvas {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-
-        .lcd-fx {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            z-index: 3;
-            background:
-                repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.07) 0 1px, transparent 1px 3px),
-                repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 3px),
-                radial-gradient(120% 120% at 50% 50%, transparent 60%, rgba(0, 0, 0, 0.45) 100%);
-            box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.7), inset 0 0 2px rgba(0, 0, 0, 0.9);
-        }
-
-        .lcd-off {
-            position: absolute;
-            inset: 0;
-            z-index: 8;
-            background: #050607;
-            display: grid;
-            place-items: center;
-            transition: opacity 0.6s ease;
-        }
-
-        .lcd-off span {
-            font: 400 9px/1 var(--font-lcd);
-            color: #1f2226;
-            letter-spacing: 0.08em;
-        }
-
-        .console.on .lcd-off {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        /* Glass lens over the whole bezel: reflections move with the tilt */
-        .glass {
-            position: absolute;
-            inset: 0;
-            border-radius: inherit;
-            overflow: hidden;
-            pointer-events: none;
-            z-index: 9;
-        }
-
-        .glass::before {
-            content: "";
-            position: absolute;
-            inset: -60%;
-            background: linear-gradient(118deg,
-                    transparent 38%, rgba(255, 255, 255, 0.15) 44%, rgba(255, 255, 255, 0.05) 49%, transparent 53%,
-                    transparent 58%, rgba(255, 255, 255, 0.07) 60%, transparent 63%);
-            transform: translate(calc(var(--gx) * 18%), calc(var(--gy) * 12%));
-        }
-
-        .glass::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            border-radius: inherit;
-            background: radial-gradient(90% 60% at calc(25% - var(--gx) * 30%) calc(-5% - var(--gy) * 15%), rgba(255, 255, 255, 0.12), transparent 60%);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 1px 0 0 rgba(255, 255, 255, 0.06);
-        }
-
-        /* In-screen UI (LCD) */
-        .lcd {
-            position: absolute;
-            z-index: 4;
-            font: 400 10px/1.25 var(--font-lcd);
-            color: #e6e9ef;
-            text-shadow: 0 1px 0 #000;
-            letter-spacing: 0.02em;
-        }
-
-        .lcd-hud {
-            left: 0;
-            right: 0;
-            top: 0;
-            padding: 6px 7px 12px;
-            display: flex;
-            justify-content: space-between;
-            gap: 6px;
-            background: linear-gradient(rgba(0, 0, 0, 0.6), transparent);
-            pointer-events: none;
-        }
-
-        .lcd-hud .lv {
+            text-transform: uppercase;
             color: var(--sodium);
         }
 
-        .lcd-hud .r {
-            display: flex;
-            gap: 8px;
-            align-items: center;
+        .card h2 {
+            margin: 0;
+            font: 700 26px/1.05 var(--font-display);
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
         }
 
-        .lcd-hud .dot {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            margin-right: 3px;
-            background: #8d97a8;
-            vertical-align: 0;
+        .card p {
+            margin: 0;
+            color: var(--ink-dim);
+            font-size: 14.5px;
         }
 
-        .lcd-hud .dot.live {
-            background: #7dff9a;
-            box-shadow: 0 0 6px #7dff9a;
+        .card ul {
+            margin: 0;
+            padding-left: 18px;
+            color: var(--ink-dim);
+            font-size: 14px;
         }
 
-        .lcd-hud .dot.warn {
-            background: #ffa21a;
+        .card .note {
+            color: var(--warn);
+            font-size: 13.5px;
         }
 
-        .lcd-prompt {
-            left: 50%;
-            bottom: 8px;
-            transform: translateX(-50%);
-            padding: 4px 8px;
-            background: rgba(0, 0, 0, 0.72);
-            border: 1px solid rgba(255, 176, 86, 0.6);
-            color: var(--sodium);
-            white-space: nowrap;
-            animation: blink 1s steps(2, start) infinite;
-            pointer-events: none;
-        }
-
-        .lcd-toast {
-            left: 8px;
-            right: 8px;
-            bottom: 34px;
-            padding: 6px 8px;
-            text-align: center;
-            background: rgba(6, 8, 14, 0.85);
-            border: 1px solid rgba(255, 176, 86, 0.35);
-            transition: opacity 0.35s;
-            pointer-events: none;
-            text-wrap: balance;
-        }
-
-        @keyframes blink {
-            50% {
-                opacity: 0.25;
-            }
-        }
-
-        .lcd-panel {
-            inset: 0;
-            z-index: 6;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
+        .card .go {
             padding: 14px;
-            text-align: center;
-            background: rgba(4, 6, 12, 0.9);
-        }
-
-        .lcd-panel h2 {
-            margin: 0;
-            font: 700 clamp(15px, calc(var(--scr) * 0.065), 22px)/1.05 var(--font-lcd);
-            color: #fff;
-        }
-
-        .lcd-panel .sub {
-            color: var(--sodium);
-        }
-
-        .lcd-panel p {
-            margin: 0;
-            color: #aab3c2;
-        }
-
-        .lcd-panel .warn {
-            color: #ffa21a;
-        }
-
-        .lcd-panel .cta {
-            color: var(--sodium);
-            animation: blink 1s steps(2, start) infinite;
-            margin-top: 4px;
-        }
-
-        .lcd-panel ul {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-            width: 100%;
-            max-width: 230px;
-        }
-
-        .lcd-panel li {
-            padding: 4px 6px;
-            text-align: left;
-            color: #aab3c2;
-            cursor: pointer;
-        }
-
-        .lcd-panel li.sel {
-            color: #111;
+            font-size: 16px;
             background: var(--sodium);
-            text-shadow: none;
-        }
-
-        .lcd-panel li.sel::before {
-            content: "> ";
+            color: #1a1006;
+            border-color: transparent;
+            text-transform: uppercase;
         }
 
         .stats {
-            display: flex;
-            gap: 6px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
         }
 
         .stats div {
-            padding: 5px 8px;
-            border: 1px solid rgba(255, 176, 86, 0.35);
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+            text-align: center;
         }
 
         .stats b {
             display: block;
-            font: 700 14px/1.1 var(--font-lcd);
-            color: #fff;
+            font: 600 20px/1.1 var(--font-mono);
+            font-variant-numeric: tabular-nums;
         }
 
         .stats span {
-            font-size: 8px;
-            color: #8d97a8;
-        }
-
-        #bootPanel {
-            background: #0a0c12;
-            overflow: hidden;
-        }
-
-        .boot-logo {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            transform: translateY(-260%);
-        }
-
-        .boot-logo b {
-            font: 700 clamp(24px, calc(var(--scr) * 0.12), 40px)/1 var(--font-lcd);
-            letter-spacing: 0.04em;
-            color: #f2efe6;
-            text-shadow: 0 2px 0 var(--btn-lo, #400);
-        }
-
-        .boot-logo span {
-            font: 400 10px/1 var(--font-lcd);
-            color: var(--sodium);
-            letter-spacing: 0.2em;
-        }
-
-        .boot-logo.drop {
-            animation: drop 1.4s cubic-bezier(.2, .7, .3, 1) forwards;
-        }
-
-        @keyframes drop {
-            to {
-                transform: translateY(0);
-            }
-        }
-
-        .boot-legal {
-            position: absolute;
-            bottom: 12px;
-            font-size: 8px;
-            color: #4b5260;
-        }
-
-        /* ---------- D-pad ---------- */
-        .dpad {
-            grid-area: dpad;
-            align-self: center;
-            justify-self: center;
-            position: relative;
-            width: var(--dp, 132px);
-            height: var(--dp, 132px);
-        }
-
-        .land .dpad {
-            --dp: min(124px, 30vh);
-        }
-
-        .dpad-well {
-            position: absolute;
-            inset: 4%;
-            border-radius: 50%;
-            background: radial-gradient(circle at 50% 45%, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.05) 62%, rgba(255, 255, 255, 0.18) 72%, transparent 74%);
-        }
-
-        .cross {
-            position: absolute;
-            inset: 14%;
-            transform-style: preserve-3d;
-            transition: transform 0.06s;
-            filter: drop-shadow(0 4px 0 var(--dpad-lo)) drop-shadow(0 7px 7px rgba(0, 0, 0, 0.4));
-        }
-
-        .dpad[data-dir="left"] .cross {
-            transform: perspective(240px) rotateY(-11deg) translateY(1px);
-            filter: drop-shadow(0 2px 0 var(--dpad-lo)) drop-shadow(0 4px 4px rgba(0, 0, 0, 0.4));
-        }
-
-        .dpad[data-dir="right"] .cross {
-            transform: perspective(240px) rotateY(11deg) translateY(1px);
-            filter: drop-shadow(0 2px 0 var(--dpad-lo)) drop-shadow(0 4px 4px rgba(0, 0, 0, 0.4));
-        }
-
-        .dpad[data-dir="up"] .cross {
-            transform: perspective(240px) rotateX(11deg) translateY(1px);
-        }
-
-        .dpad[data-dir="down"] .cross {
-            transform: perspective(240px) rotateX(-11deg) translateY(1px);
-        }
-
-        .cross i {
-            position: absolute;
-            border-radius: 5px;
-            background: linear-gradient(calc(150deg + var(--gx) * 25deg), var(--dpad-hi), var(--dpad) 38%, var(--dpad) 70%, var(--dpad-lo));
-        }
-
-        .cross .h {
-            left: 0;
-            right: 0;
-            top: 33.5%;
-            height: 33%;
-        }
-
-        .cross .v {
-            top: 0;
-            bottom: 0;
-            left: 33.5%;
-            width: 33%;
-        }
-
-        .cross .c {
-            left: 38%;
-            top: 38%;
-            width: 24%;
-            height: 24%;
-            border-radius: 50%;
-            background: radial-gradient(circle at 50% 60%, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.35));
-        }
-
-        .cross .arw {
-            position: absolute;
-            width: 0;
-            height: 0;
-            border: 5px solid transparent;
-            opacity: 0.5;
-        }
-
-        .cross .au {
-            left: calc(50% - 5px);
-            top: 7%;
-            border-bottom-color: rgba(0, 0, 0, 0.5);
-            border-top: 0;
-        }
-
-        .cross .ad {
-            left: calc(50% - 5px);
-            bottom: 7%;
-            border-top-color: rgba(0, 0, 0, 0.5);
-            border-bottom: 0;
-        }
-
-        .cross .al {
-            top: calc(50% - 5px);
-            left: 7%;
-            border-right-color: rgba(0, 0, 0, 0.5);
-            border-left: 0;
-        }
-
-        .cross .ar {
-            top: calc(50% - 5px);
-            right: 7%;
-            border-left-color: rgba(0, 0, 0, 0.5);
-            border-right: 0;
-        }
-
-        .dz {
-            position: absolute;
-            z-index: 2;
-        }
-
-        .dz.l {
-            left: 0;
-            top: 25%;
-            width: 42%;
-            height: 50%;
-        }
-
-        .dz.r {
-            right: 0;
-            top: 25%;
-            width: 42%;
-            height: 50%;
-        }
-
-        .dz.u {
-            top: 0;
-            left: 25%;
-            width: 50%;
-            height: 40%;
-        }
-
-        .dz.d {
-            bottom: 0;
-            left: 25%;
-            width: 50%;
-            height: 40%;
-        }
-
-        /* ---------- A / B ---------- */
-        .ab {
-            grid-area: ab;
-            align-self: center;
-            justify-self: center;
-            position: relative;
-            width: 150px;
-            height: 112px;
-        }
-
-        .land .ab {
-            width: min(140px, 34vh);
-            height: min(108px, 26vh);
-        }
-
-        .ab-well {
-            position: absolute;
-            left: 4%;
-            right: 4%;
-            top: 26%;
-            height: 52%;
-            border-radius: 40px;
-            transform: rotate(-24deg);
-            background: rgba(0, 0, 0, 0.08);
-            box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.18), 0 1px 0 rgba(255, 255, 255, 0.45);
-        }
-
-        .btn {
-            position: absolute;
-            width: var(--bt, 52px);
-            height: var(--bt, 52px);
-            border-radius: 50%;
-            background: radial-gradient(circle at calc(38% - var(--gx) * 16%) calc(32% - var(--gy) * 16%), var(--btn-hi) 0%, var(--btn) 40%, var(--btn) 64%, var(--btn-lo) 100%);
-            box-shadow: 0 4px 0 var(--btn-lo), 0 7px 9px rgba(0, 0, 0, 0.38), inset 0 -2px 3px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.35);
-            transition: transform 0.05s, box-shadow 0.05s;
-        }
-
-        .land .btn {
-            --bt: min(50px, 12vh);
-        }
-
-        .btn::after {
-            content: "";
-            position: absolute;
-            width: 30%;
-            height: 18%;
-            left: calc(24% - var(--gx) * 10%);
-            top: calc(16% - var(--gy) * 10%);
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.55);
-            filter: blur(1.2px);
-            transform: rotate(-30deg);
-        }
-
-        .btn.down,
-        .pill.down {
-            transform: translateY(3px);
-            box-shadow: 0 1px 0 var(--btn-lo), 0 2px 3px rgba(0, 0, 0, 0.38), inset 0 -1px 2px rgba(0, 0, 0, 0.3);
-        }
-
-        #btnA {
-            right: 2%;
-            top: 4%;
-        }
-
-        #btnB {
-            left: 6%;
-            bottom: 4%;
-        }
-
-        .lbl {
-            position: absolute;
-            font: italic 700 13px/1 var(--font-print);
-            color: var(--print);
-            letter-spacing: 0.06em;
-        }
-
-        .lbl.a {
-            right: 6%;
-            bottom: 24%;
-        }
-
-        .lbl.b {
-            left: 26%;
-            bottom: -10%;
-        }
-
-        /* ---------- Start / Select ---------- */
-        .pills {
-            grid-area: pills;
-            justify-self: center;
-            display: flex;
-            gap: 22px;
-            padding-top: 14px;
-        }
-
-        .land .pills {
-            align-self: start;
-            padding-top: 0;
-        }
-
-        .pill-wrap {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 7px;
-            transform: rotate(-24deg);
-        }
-
-        .land .pill-wrap {
-            transform: none;
-        }
-
-        .pill {
-            width: 48px;
-            height: 14px;
-            border-radius: 8px;
-            background: linear-gradient(calc(180deg + var(--gx) * 30deg), color-mix(in srgb, var(--pill) 70%, white), var(--pill) 45%, color-mix(in srgb, var(--pill) 70%, black));
-            box-shadow: 0 2px 0 color-mix(in srgb, var(--pill) 55%, black), 0 3px 5px rgba(0, 0, 0, 0.35), 0 0 0 4px rgba(0, 0, 0, 0.06);
-        }
-
-        .pill-wrap small {
-            font: 700 9px/1 var(--font-print);
-            letter-spacing: 0.14em;
-            color: var(--print);
-        }
-
-        /* ---------- Speaker ---------- */
-        .speaker {
-            position: absolute;
-            right: 26px;
-            bottom: 30px;
-            display: flex;
-            gap: 7px;
-            transform: rotate(-28deg);
-            z-index: 1;
-            pointer-events: none;
-        }
-
-        .speaker i {
-            width: 6px;
-            height: 44px;
-            border-radius: 4px;
-            background: rgba(0, 0, 0, 0.32);
-            box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.45);
-        }
-
-        .land .speaker {
-            position: relative;
-            right: auto;
-            bottom: auto;
-            grid-area: speaker;
-            justify-self: center;
-            align-self: center;
-            transform: none;
-            display: grid;
-            grid-template-columns: repeat(5, 7px);
-            gap: 6px;
-        }
-
-        .land .speaker i {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-        }
-
-        .land .speaker i:nth-child(n+11) {
-            display: none;
-        }
-
-        /* ---------- Stickers ---------- */
-        .sticker {
-            position: absolute;
-            z-index: 1;
-            pointer-events: none;
-            filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
-        }
-
-        .sticker svg {
-            width: 100%;
-            height: 100%;
-            display: block;
-            overflow: visible;
-        }
-
-        .sticker .gloss {
-            transform: translate(calc(var(--gx) * -26px), calc(var(--gy) * -18px));
-        }
-
-        .st-ball {
-            width: 64px;
-            height: 64px;
-            left: 20px;
-            bottom: 24px;
-            transform: rotate(-9deg);
-        }
-
-        .st-bolt {
-            width: 30px;
-            height: 40px;
-            left: 98px;
-            bottom: 34px;
-            transform: rotate(16deg);
-        }
-
-        .st-tag {
-            width: 96px;
-            height: 34px;
-            left: 18px;
-            bottom: 100px;
-            transform: rotate(-6deg);
-        }
-
-        .st-star {
-            width: 24px;
-            height: 24px;
-            right: 46%;
-            bottom: 22px;
-            transform: rotate(18deg);
-        }
-
-        .land .st-ball {
-            left: 22px;
-            bottom: auto;
-            top: 30px;
-            width: 54px;
-            height: 54px;
-        }
-
-        .land .st-bolt {
-            left: 26px;
-            bottom: 18px;
-            top: auto;
-        }
-
-        .land .st-tag {
-            right: 24px;
-            top: 30px;
-            transform: rotate(-5deg);
-        }
-
-        .land .st-star {
-            right: auto;
-            left: 17%;
-            bottom: auto;
-            top: 5px;
-            width: 20px;
-            height: 20px;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .boot-logo.drop {
-                animation-duration: 0.3s;
-            }
-
-            .lcd-prompt,
-            .lcd-panel .cta {
-                animation: none;
-            }
-
-            .console:not(.on) .power .slot {
-                animation: none;
-            }
+            font: 500 10.5px/1 var(--font-mono);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--ink-dim);
         }
     </style>
 </head>
 
 <body>
-    <div class="console" id="console" data-shell="cream">
-        <div class="shell" id="shell">
-            <div class="grain"></div>
-            <div class="sheen"></div>
+    <canvas id="scene" aria-label="Night Yard, a dark industrial level. Tilt to roll the ball."></canvas>
 
-            <div class="topedge">
-                <button class="power" id="powerBtn" type="button" aria-label="Power switch">OFF <span class="slot"><i
-                            class="knob"></i></span> ON</button>
+    <div class="hud">
+        <div class="lvl"><small>Level 1</small><strong>Night Yard</strong></div>
+        <div class="row">
+            <span class="chip"><span class="dot" id="statusDot"></span><span id="statusText">Not started</span></span>
+            <span class="chip"><b id="speed">0.0</b> m/s</span>
+            <span class="chip">checkpoint <b id="cp">1/6</b></span>
+            <span class="chip"><span class="lock"></span>jump module</span>
+            <button id="levelBtn" type="button">Set level</button>
+            <button id="retryBtn" type="button">Retry</button>
+        </div>
+    </div>
+
+    <div class="pad" id="pad" hidden>
+        <button id="leftBtn" type="button" aria-label="Roll left">◀</button>
+        <button id="rightBtn" type="button" aria-label="Roll right">▶</button>
+    </div>
+    <button class="use" id="useBtn" type="button" hidden>Use lift</button>
+    <div class="toast" id="toast" style="opacity:0"></div>
+
+    <div class="overlay" id="startOverlay">
+        <div class="card">
+            <small>Level 1</small>
+            <h2>Night Yard</h2>
+            <p>You're a mechanical ball, switched on in a dark scrapyard. You can roll, but there's no jump module
+                fitted yet.</p>
+            <ul>
+                <li>Tilt your phone left or right to roll. Speed carries through every drop.</li>
+                <li>Drops of about 4 m or more will break you. Your light turns red when a fall is too high.</li>
+                <li>On a lift, press <b>Use</b> to ride it.</li>
+                <li>Breaking sends you back to the last green checkpoint.</li>
+            </ul>
+            <p class="note" id="secureNote" hidden>This page isn't on an https:// address, so the gyro is blocked.
+                You'll get ◀ ▶ buttons instead.</p>
+            <p class="note" id="rotateNote" hidden>Turn your phone sideways for the best view.</p>
+            <button class="go" id="startBtn" type="button">Switch on</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="doneOverlay" hidden>
+        <div class="card">
+            <small>Level 1 cleared</small>
+            <h2>Out of the yard</h2>
+            <div class="stats">
+                <div><b id="doneTime">0:00</b><span>time</span></div>
+                <div><b id="doneBreaks">0</b><span>breaks</span></div>
+                <div><b id="doneTop">0.0</b><span>top m/s</span></div>
             </div>
-
-            <div class="bezel">
-                <div class="bezel-top">BACKLIT COLOR DISPLAY</div>
-                <div class="led-wrap"><span class="led" id="led"></span>BATT</div>
-                <div class="screen" id="screen">
-                    <canvas id="scene"
-                        aria-label="Night Yard, a dark industrial level. Tilt to roll the ball."></canvas>
-                    <div class="lcd lcd-hud">
-                        <span class="lv">NIGHT YARD</span>
-                        <span class="r"><span><i class="dot" id="statusDot"></i><span
-                                    id="statusText">OFF</span></span><span><b id="speed">0.0</b>M/S</span><span>CP <b
-                                    id="cp">1/6</b></span></span>
-                    </div>
-                    <div class="lcd lcd-toast" id="toast" style="opacity:0"></div>
-                    <div class="lcd lcd-prompt" id="prompt" hidden></div>
-
-                    <div class="lcd lcd-panel" id="bootPanel" hidden>
-                        <div class="boot-logo" id="bootLogo"><b>GYRON</b><span>POCKET</span></div>
-                        <div class="boot-legal">TILT-SENSE SYSTEM</div>
-                    </div>
-                    <div class="lcd lcd-panel" id="titlePanel" hidden>
-                        <span class="sub">LEVEL 1</span>
-                        <h2>NIGHT YARD</h2>
-                        <p>TILT TO ROLL. NO JUMP MODULE YET.<br>FALLS OVER 4 M BREAK YOU.</p>
-                        <p>A USE &middot; B SET LEVEL<br>START MENU &middot; SELECT SHELL</p>
-                        <p class="warn" id="secureNote" hidden>NOT ON HTTPS: GYRO BLOCKED, USE THE D-PAD</p>
-                        <span class="cta">PRESS A</span>
-                    </div>
-                    <div class="lcd lcd-panel" id="pausePanel" hidden>
-                        <h2>PAUSED</h2>
-                        <ul id="menuList"></ul>
-                        <p>D-PAD + A &middot; B TO RESUME</p>
-                    </div>
-                    <div class="lcd lcd-panel" id="donePanel" hidden>
-                        <span class="sub">LEVEL 1 CLEARED</span>
-                        <h2>OUT OF THE YARD</h2>
-                        <div class="stats">
-                            <div><b id="doneTime">0:00</b><span>TIME</span></div>
-                            <div><b id="doneBreaks">0</b><span>BREAKS</span></div>
-                            <div><b id="doneTop">0.0</b><span>TOP M/S</span></div>
-                        </div>
-                        <p>NEXT: LEVEL 2, THE LAB</p>
-                        <span class="cta">A &middot; PLAY AGAIN</span>
-                    </div>
-
-                    <div class="lcd-fx"></div>
-                    <div class="lcd-off" id="lcdOff"><span>POWER OFF</span></div>
-                </div>
-                <div class="brand"><b>GYRON</b><span>POCKET</span></div>
-                <div class="glass"></div>
-            </div>
-
-            <div class="dpad" id="dpad">
-                <div class="dpad-well"></div>
-                <div class="cross"><i class="h"></i><i class="v"></i><i class="c"></i><i class="arw au"></i><i
-                        class="arw ad"></i><i class="arw al"></i><i class="arw ar"></i></div>
-                <button class="dz u" id="dUp" type="button" aria-label="Up"></button>
-                <button class="dz d" id="dDown" type="button" aria-label="Down"></button>
-                <button class="dz l" id="dLeft" type="button" aria-label="Left"></button>
-                <button class="dz r" id="dRight" type="button" aria-label="Right"></button>
-            </div>
-
-            <div class="ab">
-                <div class="ab-well"></div>
-                <button class="btn" id="btnB" type="button" aria-label="B"></button>
-                <button class="btn" id="btnA" type="button" aria-label="A"></button>
-                <span class="lbl b">B</span><span class="lbl a">A</span>
-            </div>
-
-            <div class="pills">
-                <div class="pill-wrap"><button class="pill" id="btnSelect" type="button"
-                        aria-label="Select"></button><small>SELECT</small></div>
-                <div class="pill-wrap"><button class="pill" id="btnStart" type="button"
-                        aria-label="Start"></button><small>START</small></div>
-            </div>
-
-            <div class="speaker">
-                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
-            </div>
-
-            <!-- Original decals -->
-            <div class="sticker st-ball"><svg viewBox="0 0 100 100" aria-hidden="true">
-                    <defs>
-                        <clipPath id="cpBall">
-                            <circle cx="50" cy="50" r="48" />
-                        </clipPath>
-                        <linearGradient id="gl1" x1="0" y1="0" x2="1" y2="1">
-                            <stop offset="0.35" stop-color="#fff" stop-opacity="0" />
-                            <stop offset="0.5" stop-color="#fff" stop-opacity="0.5" />
-                            <stop offset="0.62" stop-color="#fff" stop-opacity="0" />
-                        </linearGradient>
-                        <radialGradient id="rb" cx="0.38" cy="0.32" r="0.75">
-                            <stop offset="0" stop-color="#ff8a7c" />
-                            <stop offset="0.45" stop-color="#d32a33" />
-                            <stop offset="1" stop-color="#5a0910" />
-                        </radialGradient>
-                    </defs>
-                    <circle cx="50" cy="50" r="48" fill="#fff" />
-                    <circle cx="50" cy="50" r="42" fill="#121621" />
-                    <circle cx="50" cy="44" r="21" fill="url(#rb)" />
-                    <circle cx="50" cy="44" r="14" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="1.6" />
-                    <circle cx="50" cy="44" r="6" fill="#1c2027" />
-                    <circle cx="50" cy="44" r="2.6" fill="#7dff9a" />
-                    <text x="50" y="81" text-anchor="middle" font-family="Chakra Petch, sans-serif" font-weight="700"
-                        font-size="12" letter-spacing="1.5" fill="#ffb056">ROLL ON</text>
-                    <path d="M22 30 l2 4 4 1 -3 3 1 4 -4 -2 -4 2 1 -4 -3 -3 4 -1z" fill="#ffd23f" />
-                    <g clip-path="url(#cpBall)">
-                        <rect class="gloss" x="-40" y="-40" width="180" height="180" fill="url(#gl1)" />
-                    </g>
-                </svg></div>
-            <div class="sticker st-bolt"><svg viewBox="0 0 80 100" aria-hidden="true">
-                    <defs>
-                        <clipPath id="cpBolt">
-                            <path d="M46 4 L10 56 H36 L28 96 L70 38 H44 Z" />
-                        </clipPath>
-                        <linearGradient id="gl2" x1="0" y1="0" x2="1" y2="1">
-                            <stop offset="0.38" stop-color="#fff" stop-opacity="0" />
-                            <stop offset="0.5" stop-color="#fff" stop-opacity="0.6" />
-                            <stop offset="0.6" stop-color="#fff" stop-opacity="0" />
-                        </linearGradient>
-                    </defs>
-                    <path d="M46 4 L10 56 H36 L28 96 L70 38 H44 Z" fill="#fff" stroke="#fff" stroke-width="12"
-                        stroke-linejoin="round" />
-                    <path d="M46 4 L10 56 H36 L28 96 L70 38 H44 Z" fill="#ffd23f" stroke="#14161a" stroke-width="3"
-                        stroke-linejoin="round" />
-                    <g clip-path="url(#cpBolt)">
-                        <rect class="gloss" x="-40" y="-40" width="160" height="180" fill="url(#gl2)" />
-                    </g>
-                </svg></div>
-            <div class="sticker st-tag"><svg viewBox="0 0 172 60" aria-hidden="true">
-                    <defs>
-                        <clipPath id="cpTag">
-                            <rect x="4" y="4" width="164" height="52" rx="8" />
-                        </clipPath>
-                        <linearGradient id="gl3" x1="0" y1="0" x2="1" y2="0.4">
-                            <stop offset="0.4" stop-color="#fff" stop-opacity="0" />
-                            <stop offset="0.5" stop-color="#fff" stop-opacity="0.55" />
-                            <stop offset="0.58" stop-color="#fff" stop-opacity="0" />
-                        </linearGradient>
-                        <pattern id="hz" width="12" height="12" patternUnits="userSpaceOnUse"
-                            patternTransform="rotate(45)">
-                            <rect width="6" height="12" fill="#14161a" />
-                            <rect x="6" width="6" height="12" fill="#f0c24a" />
-                        </pattern>
-                    </defs>
-                    <rect x="0" y="0" width="172" height="60" rx="11" fill="#fff" />
-                    <rect x="4" y="4" width="164" height="52" rx="8" fill="#f4ecd8" />
-                    <rect x="4" y="4" width="22" height="52" fill="url(#hz)" clip-path="url(#cpTag)" />
-                    <text x="98" y="27" text-anchor="middle" font-family="Chakra Petch, sans-serif" font-weight="700"
-                        font-size="17" letter-spacing="1" fill="#b31d26">SPRING TEST</text>
-                    <text x="98" y="45" text-anchor="middle" font-family="Chakra Petch, sans-serif" font-weight="600"
-                        font-size="11" letter-spacing="2.5" fill="#4a4d55">LAB 02 · PENDING</text>
-                    <g clip-path="url(#cpTag)">
-                        <rect class="gloss" x="-60" y="-30" width="300" height="120" fill="url(#gl3)" />
-                    </g>
-                </svg></div>
-            <div class="sticker st-star"><svg viewBox="0 0 100 100" aria-hidden="true">
-                    <path d="M50 6 L62 37 L95 38 L69 58 L78 92 L50 72 L22 92 L31 58 L5 38 L38 37 Z" fill="#fff"
-                        stroke="#fff" stroke-width="12" stroke-linejoin="round" />
-                    <path d="M50 6 L62 37 L95 38 L69 58 L78 92 L50 72 L22 92 L31 58 L5 38 L38 37 Z" fill="#41d3bd" />
-                    <path d="M50 18 L57 38 L50 34 Z" fill="rgba(255,255,255,.55)" />
-                </svg></div>
+            <p>Next is Level 2, the lit factory floor, where the lab holds your spring-loaded jump module.</p>
+            <button class="go" id="againBtn" type="button">Play again</button>
         </div>
     </div>
 
     <script>
-
         (() => {
             "use strict";
             const $ = (id) => document.getElementById(id);
             const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
             const lerp = (a, b, t) => a + (b - a) * t;
             const D2R = Math.PI / 180;
-            const rnd = (seed) => { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); };
+            const rnd = (seed) => {let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);};
 
             // ===================== Physics constants (SI, y points down) =====================
             const G = 9.81;
@@ -1365,65 +428,65 @@
                     const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy);
                     let nx = dy / l, ny = -dx / l;
                     const mid = [(a[0] + b[0]) / 2 + nx * 0.01, (a[1] + b[1]) / 2 + ny * 0.01];
-                    if (inside(mid, poly)) { nx = -nx; ny = -ny; }
-                    EDGES.push({ ax: a[0], ay: a[1], bx: b[0], by: b[1], nx, ny });
+                    if (inside(mid, poly)) {nx = -nx; ny = -ny;}
+                    EDGES.push({ax: a[0], ay: a[1], bx: b[0], by: b[1], nx, ny});
                 }
             });
 
             const CHECKPOINTS = [
-                { x: 2, y: 0 }, { x: 29, y: 3 }, { x: 46.5, y: 10 }, { x: 62, y: 4 }, { x: 73.6, y: 6 }, { x: 86, y: 6 },
+                {x: 2, y: 0}, {x: 29, y: 3}, {x: 46.5, y: 10}, {x: 62, y: 4}, {x: 73.6, y: 6}, {x: 86, y: 6},
             ];
             const EXIT_X = 117.8;
 
-            const lift = { x0: 56.5, x1: 59.5, yBottom: 10, yTop: 4, y: 10, target: 10, speed: 1.7, dy: 0 };
+            const lift = {x0: 56.5, x1: 59.5, yBottom: 10, yTop: 4, y: 10, target: 10, speed: 1.7, dy: 0};
             const liftMoving = () => Math.abs(lift.y - lift.target) > 1e-4;
             const atBottom = () => Math.abs(lift.y - lift.yBottom) < 1e-3;
             const atTop = () => Math.abs(lift.y - lift.yTop) < 1e-3;
 
-            const door = { x0: 82, x1: 82.4, top: 2, closed: 6, open: 4.4, bottom: 6, timer: 0, HOLD: 3.2 };
-            const plate = { x0: 76, x1: 77.4, y: 6, pressed: false };
-            const zap = { x0: 49, x1: 52, y: 10, period: 3.6, onFor: 1.6 };
+            const door = {x0: 82, x1: 82.4, top: 2, closed: 6, open: 4.4, bottom: 6, timer: 0, HOLD: 3.2};
+            const plate = {x0: 76, x1: 77.4, y: 6, pressed: false};
+            const zap = {x0: 49, x1: 52, y: 10, period: 3.6, onFor: 1.6};
             const crushers = [
-                { x0: 64.4, x1: 65.6, phase: 0, bottom: 0.9 },
-                { x0: 68.0, x1: 69.2, phase: 1.9, bottom: 0.9 },
+                {x0: 64.4, x1: 65.6, phase: 0, bottom: 0.9},
+                {x0: 68.0, x1: 69.2, phase: 1.9, bottom: 0.9},
             ];
-            const CRUSH = { up: 0.9, down: 3.98, period: 3.8 };
+            const CRUSH = {up: 0.9, down: 3.98, period: 3.8};
 
             const LAMPS = [
-                { x: 6, y: 0, h: 3.4, color: [255, 176, 86] },
-                { x: 30.5, y: 3, h: 3.2, color: [255, 176, 86] },
-                { x: 47, y: 10, h: 3.6, color: [255, 176, 86], flicker: true },
-                { x: 79, y: 6, h: 3.2, color: [255, 176, 86] },
-                { x: 100, y: 9, h: 3.4, color: [255, 176, 86] },
-                { x: 112.5, y: 10, h: 3.6, color: [255, 176, 86] },
+                {x: 6, y: 0, h: 3.4, color: [255, 176, 86]},
+                {x: 30.5, y: 3, h: 3.2, color: [255, 176, 86]},
+                {x: 47, y: 10, h: 3.6, color: [255, 176, 86], flicker: true},
+                {x: 79, y: 6, h: 3.2, color: [255, 176, 86]},
+                {x: 100, y: 9, h: 3.4, color: [255, 176, 86]},
+                {x: 112.5, y: 10, h: 3.6, color: [255, 176, 86]},
             ];
             const HANGING = [
-                { x: 62.4, y: 0.4, len: 1.0, color: [205, 225, 255] },
-                { x: 70.4, y: 0.4, len: 1.1, color: [205, 225, 255] },
-                { x: 86.5, y: 0.4, len: 1.3, color: [205, 225, 255] },
+                {x: 62.4, y: 0.4, len: 1.0, color: [205, 225, 255]},
+                {x: 70.4, y: 0.4, len: 1.1, color: [205, 225, 255]},
+                {x: 86.5, y: 0.4, len: 1.3, color: [205, 225, 255]},
             ];
-            const BEACONS = [{ x: 33.8, y: 3 }, { x: 103.5, y: 9 }, { x: 55.6, y: 10 }];
+            const BEACONS = [{x: 33.8, y: 3}, {x: 103.5, y: 9}, {x: 55.6, y: 10}];
             const SIGNS = [
-                { x: 31.8, y: 3, text: "MAX DROP 4 m" },
-                { x: 47.8, y: 10, text: "HIGH VOLTAGE" },
-                { x: 54.2, y: 10, text: "LIFT" },
-                { x: 63, y: 4, text: "PRESS" },
-                { x: 74.6, y: 6, text: "PLATE · DOOR" },
-                { x: 101.4, y: 9, text: "GAP 3 m" },
+                {x: 31.8, y: 3, text: "MAX DROP 4 m"},
+                {x: 47.8, y: 10, text: "HIGH VOLTAGE"},
+                {x: 54.2, y: 10, text: "LIFT"},
+                {x: 63, y: 4, text: "PRESS"},
+                {x: 74.6, y: 6, text: "PLATE · DOOR"},
+                {x: 101.4, y: 9, text: "GAP 3 m"},
             ];
             const COLUMNS = [[3, 0.6], [10, 0.6], [17, 2.6], [23, 3.2], [30, 3.6], [36, 6], [42, 8.5], [62, 4.6], [68, 4.6], [76, 6.6], [86, 6.6], [94, 8.3], [101, 9.6]];
             const TOASTS = [
-                { x: -99, text: "Tilt to roll. No jump module yet, so the only way is down." },
-                { x: 31, text: "Too fast off this edge and you'll overshoot onto a deadly drop." },
-                { x: 47.5, text: "The plate is live in pulses. Cross while it's dark." },
-                { x: 53.5, text: "Roll onto the lift, then press Use." },
-                { x: 61, text: "Time your run under the presses." },
-                { x: 74.5, text: "Rest on the plate to open the door. It won't stay open long." },
-                { x: 92, text: "Build speed down the ramp to clear the gap." },
+                {x: -99, text: "Tilt to roll. No jump module yet, so the only way is down."},
+                {x: 31, text: "Too fast off this edge and you'll overshoot onto a deadly drop."},
+                {x: 47.5, text: "The plate is live in pulses. Cross while it's dark."},
+                {x: 53.5, text: "Roll onto the lift, then press Use."},
+                {x: 61, text: "Time your run under the presses."},
+                {x: 74.5, text: "Rest on the plate to open the door. It won't stay open long."},
+                {x: 92, text: "Build speed down the ramp to clear the gap."},
             ];
 
             // ===================== State =====================
-            const ball = { x: 2, y: -R, vx: 0, vy: 0, angle: 0, omega: 0, grounded: false, nx: 0, ny: -1, on: null, alive: true, deadT: 0, spawnT: 0 };
+            const ball = {x: 2, y: -R, vx: 0, vy: 0, angle: 0, omega: 0, grounded: false, nx: 0, ny: -1, on: null, alive: true, deadT: 0, spawnT: 0};
             let cpIndex = 0;
             let started = false, finished = false, time = 0, breaks = 0, topSpeed = 0;
             let particles = [];
@@ -1438,15 +501,15 @@
             const TILE = 2048;
 
             function resize() {
-                DPR = Math.min(window.devicePixelRatio || 1, 2);
-                const sr = $("screen").getBoundingClientRect();
-                VW = Math.max(60, Math.round(sr.width)); VH = Math.max(60, Math.round(sr.height));
+                DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+                VW = window.innerWidth; VH = window.innerHeight;
                 for (const [c, g] of [[cvs, ctx], [wcv, wctx], [lcv, lctx]]) {
                     c.width = Math.round(VW * DPR); c.height = Math.round(VH * DPR);
                     g.setTransform(DPR, 0, 0, DPR, 0, 0);
                 }
-                PX = Math.min(VW, VH) / 9.5;
+                PX = VW >= VH ? VH / 8.6 : VW / 8.2;
                 buildBackdrop();
+                $("rotateNote").hidden = VW >= VH;
             }
             const sx = (x) => (x - camX) * PX + VW / 2;
             const sy = (y) => (y - camY) * PX + VH / 2;
@@ -1471,10 +534,10 @@
                     for (let wy = h - H2 + 8; wy < h - 6; wy += 9) {
                         for (let wx = x + 5; wx < x + w - 6; wx += 8) {
                             const r = R1();
-                            if (r < 0.028) { g.fillStyle = r < 0.007 ? "rgba(140,220,255,0.5)" : "rgba(255,196,110,0.6)"; g.fillRect(wx, wy, 3, 4); }
+                            if (r < 0.028) {g.fillStyle = r < 0.007 ? "rgba(140,220,255,0.5)" : "rgba(255,196,110,0.6)"; g.fillRect(wx, wy, 3, 4);}
                         }
                     }
-                    if (tall) skyTower = { x: x + w / 2, top: h - H2 };
+                    if (tall) skyTower = {x: x + w / 2, top: h - H2};
                     x += w + R1() * 18;
                 }
                 // Mid layer: chimneys, tanks, a crane.
@@ -1508,7 +571,7 @@
                     } else {
                         const w = 120 + R2() * 120, bh = (40 + R2() * 40) * (h / 420);
                         g.fillRect(x, h - bh, w, bh);
-                        g.beginPath(); g.moveTo(x, h - bh); for (let k = 0; k < w; k += 20) { g.lineTo(x + k + 10, h - bh - 12); g.lineTo(x + k + 20, h - bh); } g.fill();
+                        g.beginPath(); g.moveTo(x, h - bh); for (let k = 0; k < w; k += 20) {g.lineTo(x + k + 10, h - bh - 12); g.lineTo(x + k + 20, h - bh);} g.fill();
                         x += w + 30;
                     }
                 }
@@ -1516,7 +579,7 @@
 
             // ===================== Input =====================
             let sensorLive = false, lastSensorAt = 0, denied = false;
-            let tiltRaw = 0, tiltSmooth = 0, tiltOffset = 0, tiltYRaw = 0;
+            let tiltRaw = 0, tiltSmooth = 0, tiltOffset = 0;
             let padDir = 0;
             const keys = new Set();
 
@@ -1530,16 +593,15 @@
                 const dx = Math.sin(g) * Math.cos(b), dy = Math.sin(b);
                 const a = screenAngle() * D2R;
                 tiltRaw = dx * Math.cos(a) + dy * Math.sin(a);
-                tiltYRaw = -dx * Math.sin(a) + dy * Math.cos(a);
                 lastSensorAt = performance.now();
-                if (!sensorLive) { sensorLive = true; setStatus("live"); }
+                if (!sensorLive) {sensorLive = true; setStatus("live");}
             }
             function setStatus(k) {
                 const d = $("statusDot"), t = $("statusText");
                 d.className = "dot";
-                if (k === "live") { d.classList.add("live"); t.textContent = "GYRO"; }
-                else if (k === "waiting") t.textContent = "...";
-                else { d.classList.add("warn"); t.textContent = "D-PAD"; }
+                if (k === "live") {d.classList.add("live"); t.textContent = "Gyro live"; $("pad").hidden = true;}
+                else if (k === "waiting") t.textContent = "Waiting for gyro";
+                else {d.classList.add("warn"); t.textContent = "No gyro · ◀ ▶"; $("pad").hidden = false;}
             }
             // Slope input, as sin(θ) of the tilt the ball feels.
             function input() {
@@ -1550,75 +612,51 @@
                 return Math.abs(t) < 0.02 ? 0 : clamp(t * 1.8, -0.9, 0.9);
             }
 
-            let powered = false, paused = false, panel = "off";
-            async function powerOn() {
-                if (powered) return;
-                powered = true;
-                $("console").classList.add("on");
-                sfxInit();
+            async function start() {
+                $("startOverlay").hidden = true;
+                if (started) return;
+                started = true;
                 try {
                     const DOE = window.DeviceOrientationEvent;
                     if (DOE && typeof DOE.requestPermission === "function") {
                         if ((await DOE.requestPermission()) !== "granted") denied = true;
                     }
-                } catch (_) { denied = true; }
+                } catch (_) {denied = true;}
                 window.addEventListener("deviceorientation", onOrient);
                 setStatus(denied ? "none" : "waiting");
-                setTimeout(() => { if (!sensorLive) setStatus("none"); }, 1500);
-                try { if ("wakeLock" in navigator) await navigator.wakeLock.request("screen"); } catch (_) { }
-                boot();
-            }
-            function begin() {
-                showPanel(null);
-                if (!started) { started = true; spawn(0); }
+                setTimeout(() => {if (!sensorLive) setStatus("none");}, 1500);
+                try {if ("wakeLock" in navigator) await navigator.wakeLock.request("screen");} catch (_) { }
+                spawn(0);
             }
 
-            const dpadEl = $("dpad");
-            function bindButton(id, onDown, onUp) {
-                const el = $(id);
-                let isDown = false;
-                el.addEventListener("pointerdown", (e) => {
-                    e.preventDefault();
-                    isDown = true;
-                    el.classList.add("down");
-                    click(); buzz(6);
-                    try { el.setPointerCapture(e.pointerId); } catch (_) { }
-                    onDown && onDown();
-                });
-                const up = () => { if (!isDown) return; isDown = false; el.classList.remove("down"); onUp && onUp(); };
-                el.addEventListener("pointerup", up);
-                el.addEventListener("pointercancel", up);
-                el.addEventListener("lostpointercapture", up);
-                el.addEventListener("contextmenu", (e) => e.preventDefault());
-            }
-            const dirDown = (dir) => { dpadEl.dataset.dir = dir; };
-            const dirUp = () => { delete dpadEl.dataset.dir; };
-            bindButton("dLeft", () => { dirDown("left"); padDir = -1; }, () => { if (padDir === -1) padDir = 0; dirUp(); });
-            bindButton("dRight", () => { dirDown("right"); padDir = 1; }, () => { if (padDir === 1) padDir = 0; dirUp(); });
-            bindButton("dUp", () => { dirDown("up"); menuMove(-1); }, dirUp);
-            bindButton("dDown", () => { dirDown("down"); menuMove(1); }, dirUp);
-            bindButton("btnA", () => onA());
-            bindButton("btnB", () => onB());
-            bindButton("btnStart", () => onStart());
-            bindButton("btnSelect", () => onSelect());
-            $("powerBtn").addEventListener("click", (e) => { e.currentTarget.blur(); click(); powerOn(); });
-            $("screen").addEventListener("pointerdown", () => { if (!powered) powerOn(); });
-
-            const flashBtn = (id) => { const el = $(id); el.classList.add("down"); setTimeout(() => el.classList.remove("down"), 110); };
-            window.addEventListener("keydown", (e) => {
-                if (e.repeat) return;
-                const k = e.key;
-                if (k === "ArrowLeft" || k === "ArrowRight") { keys.add(k); dirDown(k === "ArrowLeft" ? "left" : "right"); e.preventDefault(); }
-                else if (k === "ArrowUp" || k === "ArrowDown") { dirDown(k === "ArrowUp" ? "up" : "down"); menuMove(k === "ArrowUp" ? -1 : 1); e.preventDefault(); }
-                else if (k === "x" || k === "X" || k === "Enter" || k === "e" || k === "E") { flashBtn("btnA"); click(); onA(); e.preventDefault(); }
-                else if (k === "z" || k === "Z" || k === "Backspace") { flashBtn("btnB"); click(); onB(); e.preventDefault(); }
-                else if (k === "Escape" || k === "p" || k === "P") { flashBtn("btnStart"); click(); onStart(); e.preventDefault(); }
-                else if (k === "c" || k === "C") { flashBtn("btnSelect"); click(); onSelect(); }
+            $("startBtn").addEventListener("click", start);
+            $("againBtn").addEventListener("click", () => {
+                $("doneOverlay").hidden = true;
+                finished = false; time = 0; breaks = 0; topSpeed = 0; toastIdx = 0;
+                door.timer = 0; lift.y = lift.target = lift.yBottom;
+                spawn(0, true);
             });
-            window.addEventListener("keyup", (e) => { keys.delete(e.key); if (e.key.startsWith("Arrow")) dirUp(); });
+            $("retryBtn").addEventListener("click", () => {if (started && ball.alive) breakBall("retry");});
+            $("levelBtn").addEventListener("click", () => {
+                tiltOffset = tiltSmooth;
+                const b = $("levelBtn"); b.textContent = sensorLive ? "Level set" : "No gyro";
+                setTimeout(() => {b.textContent = "Set level";}, 900);
+            });
+            const hold = (btn, dir) => {
+                btn.addEventListener("pointerdown", (e) => {padDir = dir; btn.setPointerCapture(e.pointerId);});
+                const up = () => {if (padDir === dir) padDir = 0;};
+                btn.addEventListener("pointerup", up); btn.addEventListener("pointercancel", up);
+            };
+            hold($("leftBtn"), -1); hold($("rightBtn"), 1);
+            $("useBtn").addEventListener("click", useAction);
+            window.addEventListener("keydown", (e) => {
+                if (e.key === "ArrowLeft" || e.key === "ArrowRight") {keys.add(e.key); e.preventDefault();}
+                if (e.key === "e" || e.key === "E" || e.key === "Enter") {useAction(); e.preventDefault();}
+            });
+            window.addEventListener("keyup", (e) => keys.delete(e.key));
             if (!window.isSecureContext) $("secureNote").hidden = false;
 
-            function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (_) { } }
+            function buzz(ms) {try {navigator.vibrate && navigator.vibrate(ms);} catch (_) { } }
 
             // ===================== Lift / Use =====================
             function useContext() {
@@ -1641,19 +679,19 @@
             function crusherBottom(c, t) {
                 const p = ((t + c.phase) % CRUSH.period + CRUSH.period) % CRUSH.period;
                 if (p < 1.8) return CRUSH.up;
-                if (p < 2.05) { const k = (p - 1.8) / 0.25; return lerp(CRUSH.up, CRUSH.down, k * k); }
+                if (p < 2.05) {const k = (p - 1.8) / 0.25; return lerp(CRUSH.up, CRUSH.down, k * k);}
                 if (p < 2.6) return CRUSH.down;
                 return lerp(CRUSH.down, CRUSH.up, (p - 2.6) / 1.2);
             }
             const zapOn = (t) => ((t % zap.period) + zap.period) % zap.period < zap.onFor;
-            const zapWarn = (t) => { const p = ((t % zap.period) + zap.period) % zap.period; return p > zap.period - 0.45; };
+            const zapWarn = (t) => {const p = ((t % zap.period) + zap.period) % zap.period; return p > zap.period - 0.45;};
 
             function dynamicRects() {
-                const out = [{ r: [lift.x0, lift.y, lift.x1, lift.y + 0.3], obj: lift }];
-                if (!atBottom()) out.push({ r: [56.2, 8.6, 56.5, 10], obj: "gate" });
-                if (!atTop()) out.push({ r: [59.5, 2.7, 59.8, 4], obj: "gate" });
-                out.push({ r: [door.x0, door.top, door.x1, door.bottom], obj: door });
-                for (const c of crushers) out.push({ r: [c.x0, 0.4, c.x1, c.bottom], obj: c });
+                const out = [{r: [lift.x0, lift.y, lift.x1, lift.y + 0.3], obj: lift}];
+                if (!atBottom()) out.push({r: [56.2, 8.6, 56.5, 10], obj: "gate"});
+                if (!atTop()) out.push({r: [59.5, 2.7, 59.8, 4], obj: "gate"});
+                out.push({r: [door.x0, door.top, door.x1, door.bottom], obj: door});
+                for (const c of crushers) out.push({r: [c.x0, 0.4, c.x1, c.bottom], obj: c});
                 return out;
             }
 
@@ -1674,12 +712,12 @@
                 ball.x += nx * (R - d); ball.y += ny * (R - d);
                 const vn = ball.vx * nx + ball.vy * ny;
                 if (vn < 0) {
-                    if (-vn > BREAK_V) { breakBall("impact"); return; }
+                    if (-vn > BREAK_V) {breakBall("impact"); return;}
                     const e = -vn > 2.5 ? BOUNCE_E : 0;
                     ball.vx -= nx * vn * (1 + e); ball.vy -= ny * vn * (1 + e);
-                    if (-vn > 3) { buzz(clamp(Math.round(-vn * 3), 8, 30)); sparks(qx, qy, Math.round(-vn)); }
+                    if (-vn > 3) {buzz(clamp(Math.round(-vn * 3), 8, 30)); sparks(qx, qy, Math.round(-vn));}
                 }
-                if (ny < -0.55) { ball.grounded = true; ball.nx = nx; ball.ny = ny; ball.on = obj; }
+                if (ny < -0.55) {ball.grounded = true; ball.nx = nx; ball.ny = ny; ball.on = obj;}
             }
             function collideRect([x0, y0, x1, y1], obj) {
                 collideSeg(x0, y0, x1, y0, obj); collideSeg(x1, y0, x1, y1, obj);
@@ -1734,8 +772,8 @@
                 ball.grounded = false; ball.on = null;
                 const dyn = dynamicRects();
                 for (let pass = 0; pass < 2 && ball.alive; pass++) {
-                    for (const e of EDGES) { collideSeg(e.ax, e.ay, e.bx, e.by, "static"); if (!ball.alive) return; }
-                    for (const d of dyn) { collideRect(d.r, d.obj); if (!ball.alive) return; }
+                    for (const e of EDGES) {collideSeg(e.ax, e.ay, e.bx, e.by, "static"); if (!ball.alive) return;}
+                    for (const d of dyn) {collideRect(d.r, d.obj); if (!ball.alive) return;}
                 }
 
                 // Spin: roll without slipping on the ground, keep spinning in the air.
@@ -1750,7 +788,7 @@
                 // Checkpoints and exit.
                 for (let i = cpIndex + 1; i < CHECKPOINTS.length; i++) {
                     const c = CHECKPOINTS[i];
-                    if (ball.grounded && ball.x > c.x - 0.5 && Math.abs(ball.y - (c.y - R)) < 1.5) { cpIndex = i; $("cp").textContent = `${i + 1}/${CHECKPOINTS.length}`; buzz(20); sfxCheckpoint(); }
+                    if (ball.grounded && ball.x > c.x - 0.5 && Math.abs(ball.y - (c.y - R)) < 1.5) {cpIndex = i; $("cp").textContent = `${i + 1}/${CHECKPOINTS.length}`; buzz(20);}
                 }
                 if (ball.x > EXIT_X && ball.y > 8) finish();
                 topSpeed = Math.max(topSpeed, Math.min(MAX_VX, Math.abs(ball.vx)));
@@ -1761,7 +799,7 @@
                 if (ball.grounded || !ball.alive) return 0;
                 let best = Infinity;
                 const tops = EDGES.filter((e) => e.ny < -0.3);
-                const dyn = dynamicRects().map((d) => ({ ax: d.r[0], ay: d.r[1], bx: d.r[2], by: d.r[1] }));
+                const dyn = dynamicRects().map((d) => ({ax: d.r[0], ay: d.r[1], bx: d.r[2], by: d.r[1]}));
                 for (const e of tops.concat(dyn)) {
                     const lo = Math.min(e.ax, e.bx), hi = Math.max(e.ax, e.bx);
                     if (ball.x < lo - 0.05 || ball.x > hi + 0.05) continue;
@@ -1779,24 +817,23 @@
                 if (!ball.alive) return;
                 ball.alive = false; ball.deadT = 0;
                 if (why !== "retry") breaks++;
-                sfxBreak(why);
                 buzz(why === "retry" ? 15 : [40, 30, 60]);
                 for (let i = 0; i < 16; i++) {
                     const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 5;
-                    particles.push({ kind: "shard", x: ball.x, y: ball.y, vx: Math.cos(a) * s + ball.vx * 0.3, vy: Math.sin(a) * s - 2, life: 1.4, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 14, size: 0.05 + Math.random() * 0.08 });
+                    particles.push({kind: "shard", x: ball.x, y: ball.y, vx: Math.cos(a) * s + ball.vx * 0.3, vy: Math.sin(a) * s - 2, life: 1.4, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 14, size: 0.05 + Math.random() * 0.08});
                 }
                 sparks(ball.x, ball.y, why === "zap" ? 30 : 18, why === "zap");
             }
             function sparks(x, y, n, blue) {
                 for (let i = 0; i < n; i++) {
                     const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.6, s = 2 + Math.random() * 6;
-                    particles.push({ kind: "spark", x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.35 + Math.random() * 0.4, blue: !!blue });
+                    particles.push({kind: "spark", x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.35 + Math.random() * 0.4, blue: !!blue});
                 }
             }
             function spawn(i, resetCP) {
-                if (resetCP) { cpIndex = 0; $("cp").textContent = `1/${CHECKPOINTS.length}`; }
+                if (resetCP) {cpIndex = 0; $("cp").textContent = `1/${CHECKPOINTS.length}`;}
                 const c = CHECKPOINTS[i ?? cpIndex];
-                Object.assign(ball, { x: c.x, y: c.y - R - 0.01, vx: 0, vy: 0, omega: 0, grounded: false, on: null, alive: true, spawnT: 0.6 });
+                Object.assign(ball, {x: c.x, y: c.y - R - 0.01, vx: 0, vy: 0, omega: 0, grounded: false, on: null, alive: true, spawnT: 0.6});
                 door.timer = 0;
             }
             function finish() {
@@ -1806,7 +843,7 @@
                 $("doneTime").textContent = `${m}:${String(s).padStart(2, "0")}`;
                 $("doneBreaks").textContent = breaks;
                 $("doneTop").textContent = topSpeed.toFixed(1);
-                setTimeout(() => showPanel("done"), 700);
+                setTimeout(() => {$("doneOverlay").hidden = false;}, 700);
                 buzz([30, 40, 30]);
             }
 
@@ -1861,7 +898,7 @@
                 g.strokeStyle = "#12161d"; g.lineWidth = Math.max(1, 0.05 * PX);
                 const step = 1.6 * PX;
                 g.beginPath();
-                for (let y = Y0; y < Y1; y += step) { g.moveTo(X - w * 1.6, y); g.lineTo(X + w * 1.6, y + step); g.moveTo(X + w * 1.6, y); g.lineTo(X - w * 1.6, y + step); }
+                for (let y = Y0; y < Y1; y += step) {g.moveTo(X - w * 1.6, y); g.lineTo(X + w * 1.6, y + step); g.moveTo(X + w * 1.6, y); g.lineTo(X - w * 1.6, y + step);}
                 g.stroke();
             }
 
@@ -1935,7 +972,7 @@
                 g.fillRect(sx(56.5), sy(0.4), 0.12 * PX, (10.35 - 0.4) * PX);
                 g.fillRect(sx(59.38), sy(0.4), 0.12 * PX, (10.35 - 0.4) * PX);
                 g.strokeStyle = "#1c222b"; g.lineWidth = 1;
-                g.beginPath(); for (let y = 0.8; y < 10.3; y += 0.6) { g.moveTo(sx(56.6), sy(y)); g.lineTo(sx(59.4), sy(y + 0.6)); } g.stroke();
+                g.beginPath(); for (let y = 0.8; y < 10.3; y += 0.6) {g.moveTo(sx(56.6), sy(y)); g.lineTo(sx(59.4), sy(y + 0.6));} g.stroke();
 
                 // Lamp posts and hanging lamps.
                 for (const L of LAMPS) {
@@ -2120,21 +1157,21 @@
                 const out = [];
                 for (const L of LAMPS) {
                     let i = 0.95;
-                    if (L.flicker) { const f = Math.sin(t * 23) * Math.sin(t * 7.3 + 1) * Math.sin(t * 1.7); if (f > 0.35) i = 0.25; }
-                    out.push({ x: L.x + 0.58, y: L.y - L.h + 0.2, r: 5.5, i, c: L.color, cone: L.y });
+                    if (L.flicker) {const f = Math.sin(t * 23) * Math.sin(t * 7.3 + 1) * Math.sin(t * 1.7); if (f > 0.35) i = 0.25;}
+                    out.push({x: L.x + 0.58, y: L.y - L.h + 0.2, r: 5.5, i, c: L.color, cone: L.y});
                 }
-                for (const L of HANGING) out.push({ x: L.x, y: L.y + L.len + 0.25, r: 4.6, i: 0.9, c: L.color, cone: L.y + L.len + 3.4 });
-                for (const b of BEACONS) if (Math.sin(t * 6 + b.x) > 0) out.push({ x: b.x, y: b.y - 0.2, r: 2.2, i: 0.6, c: [255, 162, 26] });
-                if (zapOn(t)) out.push({ x: (zap.x0 + zap.x1) / 2, y: zap.y - 0.2, r: 3.5, i: 0.85, c: [140, 210, 255] });
-                out.push({ x: (lift.x0 + lift.x1) / 2, y: lift.y - 2.1, r: 3, i: 0.7, c: [205, 225, 255] });
+                for (const L of HANGING) out.push({x: L.x, y: L.y + L.len + 0.25, r: 4.6, i: 0.9, c: L.color, cone: L.y + L.len + 3.4});
+                for (const b of BEACONS) if (Math.sin(t * 6 + b.x) > 0) out.push({x: b.x, y: b.y - 0.2, r: 2.2, i: 0.6, c: [255, 162, 26]});
+                if (zapOn(t)) out.push({x: (zap.x0 + zap.x1) / 2, y: zap.y - 0.2, r: 3.5, i: 0.85, c: [140, 210, 255]});
+                out.push({x: (lift.x0 + lift.x1) / 2, y: lift.y - 2.1, r: 3, i: 0.7, c: [205, 225, 255]});
                 for (const c of crushers) {
                     const p = ((t + c.phase) % CRUSH.period + CRUSH.period) % CRUSH.period;
-                    if (p > 1.25 && p < 2.05) out.push({ x: (c.x0 + c.x1) / 2, y: 0.7, r: 2.4, i: 0.8, c: [255, 60, 48] });
+                    if (p > 1.25 && p < 2.05) out.push({x: (c.x0 + c.x1) / 2, y: 0.7, r: 2.4, i: 0.8, c: [255, 60, 48]});
                 }
-                out.push({ x: 82.2, y: 1.75, r: 1.6, i: 0.6, c: door.timer > 0 ? [125, 255, 154] : [255, 59, 48] });
-                CHECKPOINTS.forEach((c, i) => { if (i > 0 && i <= cpIndex) out.push({ x: c.x + 0.6, y: c.y - 1.15, r: 1.8, i: 0.6, c: [125, 255, 154] }); });
-                out.push({ x: 118.7, y: 6.3, r: 4.5, i: 0.9, c: [93, 255, 143] });
-                if (ball.alive) out.push({ x: ball.x, y: ball.y, r: 1.5, i: 0.55, c: [255, 120, 110] });
+                out.push({x: 82.2, y: 1.75, r: 1.6, i: 0.6, c: door.timer > 0 ? [125, 255, 154] : [255, 59, 48]});
+                CHECKPOINTS.forEach((c, i) => {if (i > 0 && i <= cpIndex) out.push({x: c.x + 0.6, y: c.y - 1.15, r: 1.8, i: 0.6, c: [125, 255, 154]});});
+                out.push({x: 118.7, y: 6.3, r: 4.5, i: 0.9, c: [93, 255, 143]});
+                if (ball.alive) out.push({x: ball.x, y: ball.y, r: 1.5, i: 0.55, c: [255, 120, 110]});
                 return out.filter((L) => Math.abs(sx(L.x) - VW / 2) < VW / 2 + L.r * PX && Math.abs(sy(L.y) - VH / 2) < VH / 2 + L.r * PX);
             }
 
@@ -2174,7 +1211,7 @@
                     bulb.addColorStop(0, `rgba(255,255,255,${0.9 * L.i})`);
                     bulb.addColorStop(0.3, `rgba(${r},${g},${b},${0.6 * L.i})`);
                     bulb.addColorStop(1, `rgba(${r},${g},${b},0)`);
-                    if (L !== list[list.length - 1] || !ball.alive) { ctx.fillStyle = bulb; ctx.fillRect(X - 0.35 * PX, Y - 0.35 * PX, 0.7 * PX, 0.7 * PX); }
+                    if (L !== list[list.length - 1] || !ball.alive) {ctx.fillStyle = bulb; ctx.fillRect(X - 0.35 * PX, Y - 0.35 * PX, 0.7 * PX, 0.7 * PX);}
                     if (L.cone !== undefined) {
                         const top = Y, bot = sy(L.cone), w0 = 0.25 * PX, w1 = 1.6 * PX;
                         const cg = ctx.createLinearGradient(0, top, 0, bot);
@@ -2191,7 +1228,7 @@
                         ctx.beginPath();
                         let x = zap.x0;
                         ctx.moveTo(sx(x), sy(zap.y - 0.05));
-                        while (x < zap.x1) { x += 0.2 + Math.random() * 0.2; ctx.lineTo(sx(Math.min(x, zap.x1)), sy(zap.y - 0.05 - Math.random() * 0.35)); }
+                        while (x < zap.x1) {x += 0.2 + Math.random() * 0.2; ctx.lineTo(sx(Math.min(x, zap.x1)), sy(zap.y - 0.05 - Math.random() * 0.35));}
                         ctx.stroke();
                     }
                 }
@@ -2206,11 +1243,11 @@
                 let dt = clamp((now - last) / 1000, 0, 0.05);
                 last = now;
 
-                if (started && !finished && !paused) {
+                if (started && !finished) {
                     time += dt;
                     acc += dt;
-                    while (acc >= STEP) { step(STEP); if (!finished) { } acc -= STEP; }
-                    if (!ball.alive) { ball.deadT += dt; if (ball.deadT > 1.3) spawn(); }
+                    while (acc >= STEP) {step(STEP); if (!finished) { } acc -= STEP;}
+                    if (!ball.alive) {ball.deadT += dt; if (ball.deadT > 1.3) spawn();}
                     if (ball.spawnT > 0) ball.spawnT = Math.max(0, ball.spawnT - dt);
                 }
                 for (let i = particles.length - 1; i >= 0; i--) {
@@ -2238,176 +1275,18 @@
                 if (++hudTick % 6 === 0) {
                     $("speed").textContent = Math.hypot(ball.vx, ball.vy).toFixed(1);
                     const c = useContext();
-                    const pr = $("prompt");
-                    if (c && started && !finished && !panel) { pr.hidden = false; pr.textContent = "A \u00b7 " + c.toUpperCase(); } else pr.hidden = true;
-                    $("led").classList.toggle("danger", started && ball.alive && fallDanger() === 2);
-                    if (sensorLive && now - lastSensorAt > 2500) { sensorLive = false; setStatus("none"); }
+                    const btn = $("useBtn");
+                    if (c && started && !finished) {btn.hidden = false; btn.textContent = c;} else btn.hidden = true;
+                    if (sensorLive && now - lastSensorAt > 2500) {sensorLive = false; setStatus("none");}
                 }
-                if (started && toastIdx < TOASTS.length && ball.alive && ball.x > TOASTS[toastIdx].x) { showToast(TOASTS[toastIdx].text); toastIdx++; }
-                if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) $("toast").style.opacity = "0"; }
+                if (started && toastIdx < TOASTS.length && ball.alive && ball.x > TOASTS[toastIdx].x) {showToast(TOASTS[toastIdx].text); toastIdx++;}
+                if (toastTimer > 0) {toastTimer -= dt; if (toastTimer <= 0) $("toast").style.opacity = "0";}
 
-                updateGlare(dt, now);
                 requestAnimationFrame(frame);
             }
 
-            // ===================== Console: panels, menu, shells, glare, sound =====================
-            const SHELLS = [
-                { id: "cream", name: "CREAM/WINE" }, { id: "grey", name: "CLASSIC GREY" }, { id: "pink", name: "BUBBLEGUM" },
-                { id: "sand", name: "SAND/RED" }, { id: "graphite", name: "GRAPHITE" },
-            ];
-            let shellIdx = 0, soundOn = true, menuIdx = 0;
-            try {
-                const i = SHELLS.findIndex((s) => s.id === localStorage.getItem("gyron.shell"));
-                if (i >= 0) shellIdx = i;
-                if (localStorage.getItem("gyron.sound") === "0") soundOn = false;
-            } catch (_) { }
-            function applyShell() {
-                $("console").dataset.shell = SHELLS[shellIdx].id;
-                try { localStorage.setItem("gyron.shell", SHELLS[shellIdx].id); } catch (_) { }
-                if (panel === "pause") renderMenu();
-            }
-            function cycleShell(d) {
-                shellIdx = (shellIdx + d + SHELLS.length) % SHELLS.length;
-                applyShell();
-                if (powered && !panel) showToast("SHELL: " + SHELLS[shellIdx].name);
-            }
-
-            function showPanel(name) {
-                panel = name;
-                for (const p of ["boot", "title", "pause", "done"]) $(p + "Panel").hidden = p !== name;
-                paused = name === "pause";
-                if (name) { $("toast").style.opacity = "0"; toastTimer = 0; }
-            }
-            function boot() {
-                showPanel("boot");
-                const logo = $("bootLogo");
-                logo.classList.remove("drop"); void logo.offsetWidth; logo.classList.add("drop");
-                const fast = matchMedia("(prefers-reduced-motion: reduce)").matches;
-                setTimeout(chime, fast ? 350 : 1450);
-                setTimeout(() => { if (panel === "boot") showPanel("title"); }, fast ? 1100 : 2700);
-            }
-
-            const MENU = [
-                { label: () => "RESUME", act: () => showPanel(null) },
-                { label: () => "RETRY CHECKPOINT", act: () => { showPanel(null); if (ball.alive) breakBall("retry"); } },
-                { label: () => "SET LEVEL (GYRO)", act: () => { showPanel(null); calibrate(); } },
-                { label: () => "SHELL: " + SHELLS[shellIdx].name, act: () => cycleShell(1) },
-                { label: () => "SOUND: " + (soundOn ? "ON" : "OFF"), act: () => { soundOn = !soundOn; try { localStorage.setItem("gyron.sound", soundOn ? "1" : "0"); } catch (_) { } renderMenu(); } },
-                { label: () => "RESTART LEVEL", act: () => playAgain() },
-            ];
-            function renderMenu() {
-                const ul = $("menuList");
-                ul.textContent = "";
-                MENU.forEach((m, i) => {
-                    const li = document.createElement("li");
-                    li.textContent = m.label();
-                    if (i === menuIdx) li.className = "sel";
-                    li.addEventListener("pointerdown", (e) => { e.stopPropagation(); menuIdx = i; click(); m.act(); if (panel === "pause") renderMenu(); });
-                    ul.appendChild(li);
-                });
-            }
-            function menuMove(d) {
-                if (panel !== "pause") return;
-                menuIdx = (menuIdx + d + MENU.length) % MENU.length;
-                renderMenu();
-            }
-
-            function onA() {
-                if (!powered) return powerOn();
-                if (panel === "boot") return;
-                if (panel === "title") return begin();
-                if (panel === "pause") { MENU[menuIdx].act(); if (panel === "pause") renderMenu(); return; }
-                if (panel === "done") return playAgain();
-                useAction();
-            }
-            function onB() {
-                if (!powered || panel === "boot" || panel === "title" || panel === "done") return;
-                if (panel === "pause") return showPanel(null);
-                calibrate();
-            }
-            function onStart() {
-                if (!powered || panel === "boot") return;
-                if (panel === "title") return begin();
-                if (!started || finished) return;
-                if (panel === "pause") showPanel(null);
-                else { menuIdx = 0; renderMenu(); showPanel("pause"); }
-            }
-            function onSelect() { cycleShell(1); }
-            function calibrate() {
-                tiltOffset = tiltSmooth;
-                showToast(sensorLive ? "LEVEL SET" : "NO GYRO. USE THE D-PAD.");
-            }
-            function playAgain() {
-                finished = false; time = 0; breaks = 0; topSpeed = 0; toastIdx = 0;
-                door.timer = 0; lift.y = lift.target = lift.yBottom;
-                showPanel(null);
-                started = true;
-                spawn(0, true);
-            }
-
-            // Reflections: light direction follows the phone's tilt (or the mouse, or a slow drift).
-            let gx = 0, gy = 0, gyBase = 0, gyInit = false, ptrX = null, ptrY = null, glareTick = 0;
-            window.addEventListener("pointermove", (e) => {
-                if (e.pointerType === "mouse") { ptrX = (e.clientX / innerWidth) * 2 - 1; ptrY = (e.clientY / innerHeight) * 2 - 1; }
-            });
-            function updateGlare(dt, now) {
-                let tx, ty;
-                if (sensorLive) {
-                    if (!gyInit) { gyBase = tiltYRaw; gyInit = true; }
-                    gyBase += (tiltYRaw - gyBase) * (1 - Math.exp(-dt / 4));
-                    tx = clamp(tiltRaw * 1.8, -1, 1);
-                    ty = clamp((tiltYRaw - gyBase) * 3, -1, 1);
-                } else if (ptrX !== null) { tx = ptrX; ty = ptrY; }
-                else { const s = now / 1000; tx = Math.sin(s * 0.35) * 0.55; ty = Math.sin(s * 0.23 + 1) * 0.35; }
-                gx += (tx - gx) * (1 - Math.exp(-8 * dt));
-                gy += (ty - gy) * (1 - Math.exp(-8 * dt));
-                if (++glareTick % 2) return;
-                const st = document.documentElement.style;
-                st.setProperty("--gx", gx.toFixed(3));
-                st.setProperty("--gy", gy.toFixed(3));
-            }
-
-            // Sound: tiny square-wave chip voice.
-            let actx = null;
-            function sfxInit() {
-                try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.resume) actx.resume(); } catch (_) { }
-            }
-            function tone(freq, start, dur, type, vol) {
-                if (!actx || !soundOn) return;
-                try {
-                    const o = actx.createOscillator(), g = actx.createGain();
-                    o.type = type || "square"; o.frequency.value = freq;
-                    const t0 = actx.currentTime + start;
-                    g.gain.setValueAtTime(0, t0);
-                    g.gain.linearRampToValueAtTime(vol || 0.05, t0 + 0.006);
-                    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-                    o.connect(g); g.connect(actx.destination);
-                    o.start(t0); o.stop(t0 + dur + 0.03);
-                } catch (_) { }
-            }
-            function click() { tone(1700, 0, 0.03, "square", 0.02); }
-            function chime() { tone(1975.5, 0, 0.11, "square", 0.045); tone(2637, 0.085, 0.65, "square", 0.045); }
-            function sfxCheckpoint() { tone(1318.5, 0, 0.08, "square", 0.035); tone(1760, 0.07, 0.16, "square", 0.035); }
-            function sfxBreak(why) {
-                if (why === "retry") { tone(440, 0, 0.12, "square", 0.03); return; }
-                tone(220, 0, 0.09, "sawtooth", 0.06); tone(130, 0.05, 0.35, "sawtooth", 0.06); tone(70, 0.12, 0.4, "square", 0.04);
-            }
-
-            // Size the square screen to fit the body in either orientation.
-            function fitConsole() {
-                const W = window.innerWidth, H = window.innerHeight, land = W > H;
-                document.documentElement.classList.toggle("land", land);
-                const scr = land ? Math.min(H - 118, W - 370) : Math.min(W - 102, H - 400, H * 0.5);
-                document.documentElement.style.setProperty("--scr", Math.floor(Math.max(150, scr)) + "px");
-            }
-
-            applyShell();
-            fitConsole();
-            window.addEventListener("resize", fitConsole);
-            new ResizeObserver(() => resize()).observe($("screen"));
-
             if (location.hash === "#debug") {
-                window.__game = { onA, onStart, get panel() { return panel; }, ball, lift, crushers, door, get time() { return time; }, get finished() { return finished; }, get breaks() { return breaks; }, get cp() { return cpIndex; }, zapOn: () => zapOn(time), useContext, danger: fallDanger };
+                window.__game = {ball, lift, crushers, door, get time() {return time;}, get finished() {return finished;}, get breaks() {return breaks;}, get cp() {return cpIndex;}, zapOn: () => zapOn(time), useContext, danger: fallDanger};
             }
 
             window.addEventListener("resize", resize);
@@ -2415,7 +1294,6 @@
             resize();
             requestAnimationFrame(frame);
         })();
-
     </script>
 </body>
 
