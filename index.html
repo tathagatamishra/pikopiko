@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#141417">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -146,23 +149,23 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
 .glass .band {
   position: absolute; inset: -60%;
   background: linear-gradient(118deg,
-    transparent 38%, rgba(255,255,255,0.15) 44%, rgba(255,255,255,0.05) 49%, transparent 53%,
-    transparent 58%, rgba(255,255,255,0.07) 60%, transparent 63%);
+    transparent 38%, rgba(255,255,255,0.06) 44%, rgba(255,255,255,0.02) 49%, transparent 53%,
+    transparent 58%, rgba(255,255,255,0.03) 60%, transparent 63%);
   will-change: transform;
 }
-.glass canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.glass canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.4; }
 .glass::after {
   content: ""; position: absolute; inset: 0; border-radius: inherit;
-  background: radial-gradient(90% 60% at 22% -5%, rgba(255,255,255,0.1), transparent 60%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), inset 1px 0 0 rgba(255,255,255,0.06);
+  background: radial-gradient(90% 60% at 22% -5%, rgba(255,255,255,0.045), transparent 60%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), inset 1px 0 0 rgba(255,255,255,0.06);
 }
 .no-refl .blob, .no-refl .band, .no-refl .spec { display: none; }
 
 /* In-screen UI (LCD) */
-.lcd { position: absolute; z-index: 4; font: 400 10px/1.25 var(--font-lcd); color: #e6e9ef; text-shadow: 0 1px 0 #000; letter-spacing: 0.02em; }
-.lcd-hud { left: 0; right: 0; top: 0; border-radius: 23px 23px 0 0; padding: 9px 12px 12px; display: flex; justify-content: space-between; gap: 6px; background: linear-gradient(rgba(0,0,0,0.6), transparent); pointer-events: none; }
-.lcd-hud .lv { color: var(--sodium); }
-.lcd-hud .r { display: flex; gap: 8px; align-items: center; }
+.lcd { position: absolute; z-index: 4; font: 400 10px/1.25 var(--font-lcd); color: #e6e9ef; text-shadow: 0 0 6px rgba(230,236,255,0.35), 0 1px 0 #000; letter-spacing: 0.02em; }
+.lcd-hud { left: 0; right: 0; top: 0; border-radius: 23px 23px 0 0; padding: 9px 12px 12px; display: flex; justify-content: space-between; gap: 6px; white-space: nowrap; font-size: clamp(7px, calc(var(--scr) * 0.028), 10px); background: linear-gradient(rgba(0,0,0,0.6), transparent); pointer-events: none; }
+.lcd-hud .lv { color: var(--sodium); text-shadow: 0 0 6px rgba(255,176,86,0.5), 0 1px 0 #000; }
+.lcd-hud .r { display: flex; gap: 0.8em; align-items: center; }
 .lcd-hud .dot { display: inline-block; width: 6px; height: 6px; margin-right: 3px; background: #8d97a8; vertical-align: 0; }
 .lcd-hud .dot.live { background: #7dff9a; box-shadow: 0 0 6px #7dff9a; }
 .lcd-hud .dot.warn { background: #ffa21a; }
@@ -171,13 +174,13 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
 @keyframes blink { 50% { opacity: 0.25; } }
 .lcd-panel { inset: 0; z-index: 6; border-radius: 23px; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; text-align: center; background: rgba(4,6,12,0.9); }
 .lcd-panel h2 { margin: 0; font: 700 clamp(15px, calc(var(--scr) * 0.065), 22px)/1.05 var(--font-lcd); color: #fff; }
-.lcd-panel .sub { color: var(--sodium); }
+.lcd-panel .sub { color: var(--sodium); text-shadow: 0 0 8px rgba(255,176,86,0.55), 0 1px 0 #000; }
 .lcd-panel p { margin: 0; color: #aab3c2; }
 .lcd-panel .warn { color: #ffa21a; }
-.lcd-panel .cta { color: var(--sodium); animation: blink 1s steps(2, start) infinite; margin-top: 4px; }
+.lcd-panel .cta { text-shadow: 0 0 8px rgba(255,176,86,0.55), 0 1px 0 #000; color: var(--sodium); animation: blink 1s steps(2, start) infinite; margin-top: 4px; }
 .lcd-panel ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; width: 100%; max-width: 240px; }
 .lcd-panel li { padding: 4px 6px; text-align: left; color: #aab3c2; cursor: pointer; }
-.lcd-panel li.sel { color: #111; background: var(--sodium); text-shadow: none; }
+.lcd-panel li.sel { color: #111; background: var(--sodium); text-shadow: none; box-shadow: 0 0 12px rgba(255,176,86,0.45); }
 .lcd-panel li.sel::before { content: "> "; }
 .lib ul { max-width: 260px; gap: 6px; }
 .lib li { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border: 1px solid rgba(255,176,86,0.25); }
@@ -193,7 +196,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
 .stats span { font-size: 8px; color: #8d97a8; }
 #bootPanel { background: #0a0c12; overflow: hidden; }
 .boot-logo { display: flex; flex-direction: column; align-items: center; gap: 4px; transform: translateY(-260%); }
-.boot-logo b { font: 700 clamp(24px, calc(var(--scr) * 0.12), 40px)/1 var(--font-lcd); letter-spacing: 0.04em; color: #f2efe6; text-shadow: 0 2px 0 var(--btn-lo, #400); }
+.boot-logo b { font: 700 clamp(24px, calc(var(--scr) * 0.12), 40px)/1 var(--font-lcd); letter-spacing: 0.04em; color: #f2efe6; text-shadow: 0 0 14px rgba(242,239,230,0.45), 0 2px 0 var(--btn-lo, #400); }
 .boot-logo span { font: 400 10px/1 var(--font-lcd); color: var(--sodium); letter-spacing: 0.2em; }
 .boot-logo.drop { animation: drop 1.4s cubic-bezier(.2,.7,.3,1) forwards; }
 @keyframes drop { to { transform: translateY(0); } }
@@ -1392,6 +1395,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     applyLighting(L);
     ctx.drawImage(wcv, 0, 0, VW, VH);
     drawGlows(L);
+    applyBloom();
     // Round the screen corners in the drawing itself (cheaper than clipping the canvas layer).
     ctx.save();
     ctx.globalCompositeOperation = "destination-out";
@@ -1470,6 +1474,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     { label: () => "SET LEVEL (GYRO)", act: () => { showPanel(null); calibrate(); } },
     { label: () => "SHELL: " + SHELLS[shellIdx].name, act: () => cycleShell(1) },
     { label: () => "REFLECTIONS: " + (reflOn ? "ON" : "OFF"), act: () => { reflOn = !reflOn; try { localStorage.setItem("gyron.refl", reflOn ? "1" : "0"); } catch (_) {} applyRefl(); renderMenu(); } },
+    { label: () => "BLOOM: " + (bloomOn ? "ON" : "OFF"), act: () => { bloomOn = !bloomOn; try { localStorage.setItem("gyron.bloom", bloomOn ? "1" : "0"); } catch (_) {} renderMenu(); } },
     { label: () => "SOUND: " + (soundOn ? "ON" : "OFF"), act: () => { soundOn = !soundOn; try { localStorage.setItem("gyron.sound", soundOn ? "1" : "0"); } catch (_) {} renderMenu(); } },
     { label: () => "RESTART LEVEL", act: () => playAgain() },
     { label: () => "QUIT TO GAMES", act: () => { started = false; showLib(); } },
@@ -1587,6 +1592,41 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
 
   // If frames run long for a while, drop the game screen to 1x resolution.
   let slowT = 0;
+  // Screen bloom: a small copy of the frame, squared so only bright areas survive,
+  // blurred by downscaling and added back on top.
+  const bl1 = document.createElement("canvas"), bl1x = bl1.getContext("2d");
+  const bl2 = document.createElement("canvas"), bl2x = bl2.getContext("2d");
+  let bloomOn = true, bloomTick = 0;
+  try { if (localStorage.getItem("gyron.bloom") === "0") bloomOn = false; } catch (_) {}
+  function applyBloom() {
+    if (!bloomOn) return;
+    const w1 = Math.max(8, Math.round(VW / 4)), h1 = Math.max(8, Math.round(VH / 4));
+    if (bl1.width !== w1 || bl1.height !== h1) {
+      bl1.width = w1; bl1.height = h1;
+      bl2.width = Math.max(4, w1 >> 1); bl2.height = Math.max(4, h1 >> 1);
+    }
+    // Rebuild the glow every other frame; it changes slowly.
+    if ((bloomTick = (bloomTick + 1) & 1) === 0) {
+      bl1x.globalCompositeOperation = "copy";
+      bl1x.drawImage(cvs, 0, 0, w1, h1);
+      bl1x.globalCompositeOperation = "multiply";
+      bl1x.drawImage(bl1, 0, 0);
+      bl2x.globalCompositeOperation = "copy";
+      bl2x.drawImage(bl1, 0, 0, bl2.width, bl2.height);
+      // Fold the wide glow into the tight one so the screen gets a single upscale.
+      bl1x.globalCompositeOperation = "lighter";
+      bl1x.imageSmoothingEnabled = true;
+      bl1x.drawImage(bl2, 0, 0, w1, h1);
+      bl1x.globalAlpha = 1;
+    }
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "medium";
+    ctx.globalAlpha = 0.8; ctx.drawImage(bl1, 0, 0, VW, VH);
+    ctx.restore();
+  }
+
   function watchPerf(rawMs, dt) {
     if (!started || paused || maxDPR <= 1) return;
     if (rawMs > 25) slowT += dt; else slowT = Math.max(0, slowT - dt * 0.5);
@@ -1730,6 +1770,10 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
 
   applyShell();
   applyRefl();
+  // Offline support once installed (only on http/https).
+  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+  }
   fitConsole();
   window.addEventListener("resize", fitConsole);
   new ResizeObserver(() => resize()).observe($("screen"));
