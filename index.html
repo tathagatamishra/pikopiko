@@ -1,0 +1,1300 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+        content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+    <meta name="theme-color" content="#03050b">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Night Yard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+    <style>
+        /* Layout: full-screen canvas game, HUD pinned to the corners, contextual Use button bottom-right. */
+        :root {
+            --bg: #03050b;
+            --ink: #e6e9ef;
+            --ink-dim: #8d97a8;
+            --sodium: #ffb056;
+            --ok: #7dff9a;
+            --warn: #ffa21a;
+            --danger: #ff3b30;
+            --panel: rgba(10, 13, 20, 0.78);
+            --line: rgba(255, 176, 86, 0.22);
+            --font-display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
+            --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+            color-scheme: dark;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--ink);
+            font: 15px/1.45 var(--font-display);
+            overscroll-behavior: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            touch-action: none;
+        }
+
+        .hud {
+            position: fixed;
+            top: calc(env(safe-area-inset-top, 0px) + 10px);
+            left: max(16px, env(safe-area-inset-left, 0px));
+            right: max(16px, env(safe-area-inset-right, 0px));
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px 12px;
+            pointer-events: none;
+        }
+
+        .lvl {
+            display: flex;
+            flex-direction: column;
+            line-height: 1;
+            gap: 3px;
+        }
+
+        .lvl small {
+            font: 500 11px/1 var(--font-mono);
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--sodium);
+        }
+
+        .lvl strong {
+            font: 700 clamp(18px, 3.4vw, 24px)/1 var(--font-display);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+            justify-content: flex-end;
+            pointer-events: auto;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 9px;
+            border-radius: 6px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            font: 500 11.5px/1 var(--font-mono);
+            font-variant-numeric: tabular-nums;
+            color: var(--ink-dim);
+        }
+
+        .chip b {
+            color: var(--ink);
+            font-weight: 500;
+        }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--ink-dim);
+        }
+
+        .dot.live {
+            background: var(--ok);
+            box-shadow: 0 0 8px var(--ok);
+        }
+
+        .dot.warn {
+            background: var(--warn);
+        }
+
+        .lock {
+            width: 9px;
+            height: 8px;
+            border: 1.5px solid var(--ink-dim);
+            border-radius: 2px;
+            position: relative;
+            margin-top: 3px;
+        }
+
+        .lock::before {
+            content: "";
+            position: absolute;
+            left: 0.5px;
+            top: -6px;
+            width: 5px;
+            height: 5px;
+            border: 1.5px solid var(--ink-dim);
+            border-bottom: 0;
+            border-radius: 4px 4px 0 0;
+        }
+
+        button {
+            font: 600 13px/1 var(--font-display);
+            letter-spacing: 0.04em;
+            color: var(--ink);
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 8px 11px;
+            cursor: pointer;
+            touch-action: none;
+        }
+
+        button:focus-visible {
+            outline: 2px solid var(--sodium);
+            outline-offset: 2px;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .pad {
+            position: fixed;
+            left: calc(max(16px, env(safe-area-inset-left, 0px)) + 4px);
+            bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 4px);
+            display: flex;
+            gap: 12px;
+        }
+
+        .pad button {
+            width: 64px;
+            height: 56px;
+            font-size: 20px;
+            border-radius: 12px;
+        }
+
+        .use {
+            position: fixed;
+            right: calc(max(16px, env(safe-area-inset-right, 0px)) + 4px);
+            bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 4px);
+            min-width: 108px;
+            height: 56px;
+            padding: 0 18px;
+            border-radius: 12px;
+            font-size: 15px;
+            text-transform: uppercase;
+            background: var(--sodium);
+            border-color: transparent;
+            color: #1a1006;
+            box-shadow: 0 0 22px rgba(255, 176, 86, 0.45);
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 78px);
+            transform: translateX(-50%);
+            max-width: min(520px, calc(100% - 32px));
+            padding: 9px 14px;
+            border-radius: 8px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            color: var(--ink);
+            font: 500 14px/1.35 var(--font-display);
+            text-align: center;
+            text-wrap: balance;
+            transition: opacity 0.35s;
+            pointer-events: none;
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            z-index: 5;
+            padding: 16px;
+            background: rgba(2, 3, 8, 0.78);
+        }
+
+        .card {
+            width: min(420px, 100%);
+            max-height: 100%;
+            overflow: auto;
+            padding: 22px 20px 18px;
+            border-radius: 14px;
+            background: #0b0e15;
+            border: 1px solid var(--line);
+            display: flex;
+            flex-direction: column;
+            gap: 11px;
+        }
+
+        .card small {
+            font: 500 11px/1 var(--font-mono);
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--sodium);
+        }
+
+        .card h2 {
+            margin: 0;
+            font: 700 26px/1.05 var(--font-display);
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .card p {
+            margin: 0;
+            color: var(--ink-dim);
+            font-size: 14.5px;
+        }
+
+        .card ul {
+            margin: 0;
+            padding-left: 18px;
+            color: var(--ink-dim);
+            font-size: 14px;
+        }
+
+        .card .note {
+            color: var(--warn);
+            font-size: 13.5px;
+        }
+
+        .card .go {
+            padding: 14px;
+            font-size: 16px;
+            background: var(--sodium);
+            color: #1a1006;
+            border-color: transparent;
+            text-transform: uppercase;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .stats div {
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+            text-align: center;
+        }
+
+        .stats b {
+            display: block;
+            font: 600 20px/1.1 var(--font-mono);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stats span {
+            font: 500 10.5px/1 var(--font-mono);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--ink-dim);
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="scene" aria-label="Night Yard, a dark industrial level. Tilt to roll the ball."></canvas>
+
+    <div class="hud">
+        <div class="lvl"><small>Level 1</small><strong>Night Yard</strong></div>
+        <div class="row">
+            <span class="chip"><span class="dot" id="statusDot"></span><span id="statusText">Not started</span></span>
+            <span class="chip"><b id="speed">0.0</b> m/s</span>
+            <span class="chip">checkpoint <b id="cp">1/6</b></span>
+            <span class="chip"><span class="lock"></span>jump module</span>
+            <button id="levelBtn" type="button">Set level</button>
+            <button id="retryBtn" type="button">Retry</button>
+        </div>
+    </div>
+
+    <div class="pad" id="pad" hidden>
+        <button id="leftBtn" type="button" aria-label="Roll left">◀</button>
+        <button id="rightBtn" type="button" aria-label="Roll right">▶</button>
+    </div>
+    <button class="use" id="useBtn" type="button" hidden>Use lift</button>
+    <div class="toast" id="toast" style="opacity:0"></div>
+
+    <div class="overlay" id="startOverlay">
+        <div class="card">
+            <small>Level 1</small>
+            <h2>Night Yard</h2>
+            <p>You're a mechanical ball, switched on in a dark scrapyard. You can roll, but there's no jump module
+                fitted yet.</p>
+            <ul>
+                <li>Tilt your phone left or right to roll. Speed carries through every drop.</li>
+                <li>Drops of about 4 m or more will break you. Your light turns red when a fall is too high.</li>
+                <li>On a lift, press <b>Use</b> to ride it.</li>
+                <li>Breaking sends you back to the last green checkpoint.</li>
+            </ul>
+            <p class="note" id="secureNote" hidden>This page isn't on an https:// address, so the gyro is blocked.
+                You'll get ◀ ▶ buttons instead.</p>
+            <p class="note" id="rotateNote" hidden>Turn your phone sideways for the best view.</p>
+            <button class="go" id="startBtn" type="button">Switch on</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="doneOverlay" hidden>
+        <div class="card">
+            <small>Level 1 cleared</small>
+            <h2>Out of the yard</h2>
+            <div class="stats">
+                <div><b id="doneTime">0:00</b><span>time</span></div>
+                <div><b id="doneBreaks">0</b><span>breaks</span></div>
+                <div><b id="doneTop">0.0</b><span>top m/s</span></div>
+            </div>
+            <p>Next is Level 2, the lit factory floor, where the lab holds your spring-loaded jump module.</p>
+            <button class="go" id="againBtn" type="button">Play again</button>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            "use strict";
+            const $ = (id) => document.getElementById(id);
+            const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+            const lerp = (a, b, t) => a + (b - a) * t;
+            const D2R = Math.PI / 180;
+            const rnd = (seed) => {let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);};
+
+            // ===================== Physics constants (SI, y points down) =====================
+            const G = 9.81;
+            const R = 0.3;             // ball radius, m
+            const BREAK_V = 9.2;       // impact speed that breaks the ball (≈ a 4.3 m fall)
+            const MAX_VX = 9;          // top rolling speed, m/s
+            const ROLL_K = 0.35;       // rolling resistance on steel decks, 1/s
+            const BOUNCE_E = 0.22;     // restitution for hard hits on metal
+            const PIT_Y = 17;          // falling below this is lost
+
+            // ===================== Level 1 layout =====================
+            const rect = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+            const SOLIDS = [
+                // Start gantry, step down, ramp, and the ledge-top deck.
+                [[-1, -8], [0, -8], [0, 0], [14, 0], [14, 2], [20, 2], [26, 3], [34, 3], [34, 3.6], [26, 3.6], [20, 2.6], [14.6, 2.6], [14.6, 0.6], [-1, 0.6]],
+                rect(33.5, 5.5, 39, 6.0),                                     // ledge 1
+                rect(38.4, 8, 44, 8.5),                                       // ledge 2
+                [[43.2, 8.6], [43.6, 8.6], [43.6, 10], [56.5, 10], [56.5, 13], [43.2, 13]], // yard floor
+                rect(56.5, 10.35, 59.5, 13),                                  // lift pit floor
+                rect(56.2, -1.2, 56.5, 8.6),                                  // lift shaft wall
+                rect(56.2, -1.6, 72, 0.4),                                    // roof over lift + press deck
+                [[59.5, 4], [72, 4], [72, 4.6], [60.4, 4.6], [60.4, 13], [59.5, 13]], // press deck
+                [[71, 4.7], [71.6, 4.7], [71.6, 6], [90, 6], [97, 9], [104, 9], [104, 9.6], [97, 9.6], [90, 6.6], [71, 6.6]], // gate hall + ramp
+                rect(72.5, -1.6, 90, 0.4),                                    // gate hall roof
+                rect(81.8, 0.4, 82.6, 2),                                     // door frame
+                [[107, 10], [122, 10], [122, 3], [123, 3], [123, 13], [107, 13]], // exit dock
+            ];
+
+            // Precompute edges with outward normals.
+            function inside(pt, poly) {
+                let c = false;
+                for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+                    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+                    if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi) c = !c;
+                }
+                return c;
+            }
+            const EDGES = [];
+            SOLIDS.forEach((poly) => {
+                for (let i = 0; i < poly.length; i++) {
+                    const a = poly[i], b = poly[(i + 1) % poly.length];
+                    const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy);
+                    let nx = dy / l, ny = -dx / l;
+                    const mid = [(a[0] + b[0]) / 2 + nx * 0.01, (a[1] + b[1]) / 2 + ny * 0.01];
+                    if (inside(mid, poly)) {nx = -nx; ny = -ny;}
+                    EDGES.push({ax: a[0], ay: a[1], bx: b[0], by: b[1], nx, ny});
+                }
+            });
+
+            const CHECKPOINTS = [
+                {x: 2, y: 0}, {x: 29, y: 3}, {x: 46.5, y: 10}, {x: 62, y: 4}, {x: 73.6, y: 6}, {x: 86, y: 6},
+            ];
+            const EXIT_X = 117.8;
+
+            const lift = {x0: 56.5, x1: 59.5, yBottom: 10, yTop: 4, y: 10, target: 10, speed: 1.7, dy: 0};
+            const liftMoving = () => Math.abs(lift.y - lift.target) > 1e-4;
+            const atBottom = () => Math.abs(lift.y - lift.yBottom) < 1e-3;
+            const atTop = () => Math.abs(lift.y - lift.yTop) < 1e-3;
+
+            const door = {x0: 82, x1: 82.4, top: 2, closed: 6, open: 4.4, bottom: 6, timer: 0, HOLD: 3.2};
+            const plate = {x0: 76, x1: 77.4, y: 6, pressed: false};
+            const zap = {x0: 49, x1: 52, y: 10, period: 3.6, onFor: 1.6};
+            const crushers = [
+                {x0: 64.4, x1: 65.6, phase: 0, bottom: 0.9},
+                {x0: 68.0, x1: 69.2, phase: 1.9, bottom: 0.9},
+            ];
+            const CRUSH = {up: 0.9, down: 3.98, period: 3.8};
+
+            const LAMPS = [
+                {x: 6, y: 0, h: 3.4, color: [255, 176, 86]},
+                {x: 30.5, y: 3, h: 3.2, color: [255, 176, 86]},
+                {x: 47, y: 10, h: 3.6, color: [255, 176, 86], flicker: true},
+                {x: 79, y: 6, h: 3.2, color: [255, 176, 86]},
+                {x: 100, y: 9, h: 3.4, color: [255, 176, 86]},
+                {x: 112.5, y: 10, h: 3.6, color: [255, 176, 86]},
+            ];
+            const HANGING = [
+                {x: 62.4, y: 0.4, len: 1.0, color: [205, 225, 255]},
+                {x: 70.4, y: 0.4, len: 1.1, color: [205, 225, 255]},
+                {x: 86.5, y: 0.4, len: 1.3, color: [205, 225, 255]},
+            ];
+            const BEACONS = [{x: 33.8, y: 3}, {x: 103.5, y: 9}, {x: 55.6, y: 10}];
+            const SIGNS = [
+                {x: 31.8, y: 3, text: "MAX DROP 4 m"},
+                {x: 47.8, y: 10, text: "HIGH VOLTAGE"},
+                {x: 54.2, y: 10, text: "LIFT"},
+                {x: 63, y: 4, text: "PRESS"},
+                {x: 74.6, y: 6, text: "PLATE · DOOR"},
+                {x: 101.4, y: 9, text: "GAP 3 m"},
+            ];
+            const COLUMNS = [[3, 0.6], [10, 0.6], [17, 2.6], [23, 3.2], [30, 3.6], [36, 6], [42, 8.5], [62, 4.6], [68, 4.6], [76, 6.6], [86, 6.6], [94, 8.3], [101, 9.6]];
+            const TOASTS = [
+                {x: -99, text: "Tilt to roll. No jump module yet, so the only way is down."},
+                {x: 31, text: "Too fast off this edge and you'll overshoot onto a deadly drop."},
+                {x: 47.5, text: "The plate is live in pulses. Cross while it's dark."},
+                {x: 53.5, text: "Roll onto the lift, then press Use."},
+                {x: 61, text: "Time your run under the presses."},
+                {x: 74.5, text: "Rest on the plate to open the door. It won't stay open long."},
+                {x: 92, text: "Build speed down the ramp to clear the gap."},
+            ];
+
+            // ===================== State =====================
+            const ball = {x: 2, y: -R, vx: 0, vy: 0, angle: 0, omega: 0, grounded: false, nx: 0, ny: -1, on: null, alive: true, deadT: 0, spawnT: 0};
+            let cpIndex = 0;
+            let started = false, finished = false, time = 0, breaks = 0, topSpeed = 0;
+            let particles = [];
+            let toastIdx = 0, toastTimer = 0;
+
+            // ===================== Canvas =====================
+            const cvs = $("scene"), ctx = cvs.getContext("2d");
+            const wcv = document.createElement("canvas"), wctx = wcv.getContext("2d");
+            const lcv = document.createElement("canvas"), lctx = lcv.getContext("2d");
+            let VW = 0, VH = 0, DPR = 1, PX = 46, camX = 2, camY = -2;
+            let skyline = null, midline = null, skyTower = null;
+            const TILE = 2048;
+
+            function resize() {
+                DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+                VW = window.innerWidth; VH = window.innerHeight;
+                for (const [c, g] of [[cvs, ctx], [wcv, wctx], [lcv, lctx]]) {
+                    c.width = Math.round(VW * DPR); c.height = Math.round(VH * DPR);
+                    g.setTransform(DPR, 0, 0, DPR, 0, 0);
+                }
+                PX = VW >= VH ? VH / 8.6 : VW / 8.2;
+                buildBackdrop();
+                $("rotateNote").hidden = VW >= VH;
+            }
+            const sx = (x) => (x - camX) * PX + VW / 2;
+            const sy = (y) => (y - camY) * PX + VH / 2;
+
+            function buildBackdrop() {
+                const h = Math.max(260, VH);
+                // Far skyline: dark towers with a handful of lit windows.
+                skyline = document.createElement("canvas");
+                skyline.width = TILE; skyline.height = h;
+                let g = skyline.getContext("2d");
+                const R1 = rnd(11);
+                let x = 0;
+                skyTower = null;
+                while (x < TILE) {
+                    const w = 40 + R1() * 110, bh = (45 + R1() * 130) * (h / 420);
+                    const tall = !skyTower && x > 600 && R1() > 0.5;
+                    const H2 = tall ? bh * 2.1 : bh;
+                    g.fillStyle = "#080b16";
+                    g.fillRect(x, h - H2, w, H2);
+                    g.fillStyle = "#0b1020";
+                    g.fillRect(x, h - H2, 2, H2);
+                    for (let wy = h - H2 + 8; wy < h - 6; wy += 9) {
+                        for (let wx = x + 5; wx < x + w - 6; wx += 8) {
+                            const r = R1();
+                            if (r < 0.028) {g.fillStyle = r < 0.007 ? "rgba(140,220,255,0.5)" : "rgba(255,196,110,0.6)"; g.fillRect(wx, wy, 3, 4);}
+                        }
+                    }
+                    if (tall) skyTower = {x: x + w / 2, top: h - H2};
+                    x += w + R1() * 18;
+                }
+                // Mid layer: chimneys, tanks, a crane.
+                midline = document.createElement("canvas");
+                midline.width = TILE; midline.height = h;
+                g = midline.getContext("2d");
+                const R2 = rnd(29);
+                g.fillStyle = "#070a12";
+                x = 0;
+                while (x < TILE) {
+                    const kind = R2();
+                    if (kind < 0.35) {
+                        const w = 14 + R2() * 12, ch = (140 + R2() * 160) * (h / 420);
+                        g.fillRect(x, h - ch, w, ch);
+                        g.fillStyle = "#0c111d"; g.fillRect(x, h - ch + 10, w, 4); g.fillRect(x, h - ch + 22, w, 4); g.fillStyle = "#070a12";
+                        x += w + 30 + R2() * 60;
+                    } else if (kind < 0.7) {
+                        const w = 70 + R2() * 70, th = (60 + R2() * 50) * (h / 420);
+                        g.fillRect(x, h - th, w, th);
+                        g.beginPath(); g.ellipse(x + w / 2, h - th, w / 2, 12, 0, Math.PI, 0); g.fill();
+                        x += w + 20 + R2() * 50;
+                    } else if (kind < 0.85) {
+                        const ch = (220 + R2() * 80) * (h / 420);
+                        g.fillRect(x, h - ch, 8, ch);
+                        g.fillRect(x - 40, h - ch, 180, 6);
+                        g.strokeStyle = "#070a12"; g.lineWidth = 2;
+                        g.beginPath(); g.moveTo(x + 4, h - ch - 26); g.lineTo(x - 40, h - ch); g.moveTo(x + 4, h - ch - 26); g.lineTo(x + 140, h - ch); g.stroke();
+                        g.fillRect(x + 1, h - ch - 26, 6, 26);
+                        g.beginPath(); g.moveTo(x + 110, h - ch + 6); g.lineTo(x + 110, h - ch + 70); g.stroke();
+                        x += 200 + R2() * 60;
+                    } else {
+                        const w = 120 + R2() * 120, bh = (40 + R2() * 40) * (h / 420);
+                        g.fillRect(x, h - bh, w, bh);
+                        g.beginPath(); g.moveTo(x, h - bh); for (let k = 0; k < w; k += 20) {g.lineTo(x + k + 10, h - bh - 12); g.lineTo(x + k + 20, h - bh);} g.fill();
+                        x += w + 30;
+                    }
+                }
+            }
+
+            // ===================== Input =====================
+            let sensorLive = false, lastSensorAt = 0, denied = false;
+            let tiltRaw = 0, tiltSmooth = 0, tiltOffset = 0;
+            let padDir = 0;
+            const keys = new Set();
+
+            function screenAngle() {
+                if (screen.orientation && typeof screen.orientation.angle === "number") return screen.orientation.angle;
+                return typeof window.orientation === "number" ? window.orientation : 0;
+            }
+            function onOrient(e) {
+                if (e.beta == null || e.gamma == null) return;
+                const b = e.beta * D2R, g = e.gamma * D2R;
+                const dx = Math.sin(g) * Math.cos(b), dy = Math.sin(b);
+                const a = screenAngle() * D2R;
+                tiltRaw = dx * Math.cos(a) + dy * Math.sin(a);
+                lastSensorAt = performance.now();
+                if (!sensorLive) {sensorLive = true; setStatus("live");}
+            }
+            function setStatus(k) {
+                const d = $("statusDot"), t = $("statusText");
+                d.className = "dot";
+                if (k === "live") {d.classList.add("live"); t.textContent = "Gyro live"; $("pad").hidden = true;}
+                else if (k === "waiting") t.textContent = "Waiting for gyro";
+                else {d.classList.add("warn"); t.textContent = "No gyro · ◀ ▶"; $("pad").hidden = false;}
+            }
+            // Slope input, as sin(θ) of the tilt the ball feels.
+            function input() {
+                const k = (keys.has("ArrowRight") ? 1 : 0) - (keys.has("ArrowLeft") ? 1 : 0);
+                if (padDir || k) return (padDir || k) * 0.65;
+                if (!sensorLive) return 0;
+                const t = tiltSmooth - tiltOffset;
+                return Math.abs(t) < 0.02 ? 0 : clamp(t * 1.8, -0.9, 0.9);
+            }
+
+            async function start() {
+                $("startOverlay").hidden = true;
+                if (started) return;
+                started = true;
+                try {
+                    const DOE = window.DeviceOrientationEvent;
+                    if (DOE && typeof DOE.requestPermission === "function") {
+                        if ((await DOE.requestPermission()) !== "granted") denied = true;
+                    }
+                } catch (_) {denied = true;}
+                window.addEventListener("deviceorientation", onOrient);
+                setStatus(denied ? "none" : "waiting");
+                setTimeout(() => {if (!sensorLive) setStatus("none");}, 1500);
+                try {if ("wakeLock" in navigator) await navigator.wakeLock.request("screen");} catch (_) { }
+                spawn(0);
+            }
+
+            $("startBtn").addEventListener("click", start);
+            $("againBtn").addEventListener("click", () => {
+                $("doneOverlay").hidden = true;
+                finished = false; time = 0; breaks = 0; topSpeed = 0; toastIdx = 0;
+                door.timer = 0; lift.y = lift.target = lift.yBottom;
+                spawn(0, true);
+            });
+            $("retryBtn").addEventListener("click", () => {if (started && ball.alive) breakBall("retry");});
+            $("levelBtn").addEventListener("click", () => {
+                tiltOffset = tiltSmooth;
+                const b = $("levelBtn"); b.textContent = sensorLive ? "Level set" : "No gyro";
+                setTimeout(() => {b.textContent = "Set level";}, 900);
+            });
+            const hold = (btn, dir) => {
+                btn.addEventListener("pointerdown", (e) => {padDir = dir; btn.setPointerCapture(e.pointerId);});
+                const up = () => {if (padDir === dir) padDir = 0;};
+                btn.addEventListener("pointerup", up); btn.addEventListener("pointercancel", up);
+            };
+            hold($("leftBtn"), -1); hold($("rightBtn"), 1);
+            $("useBtn").addEventListener("click", useAction);
+            window.addEventListener("keydown", (e) => {
+                if (e.key === "ArrowLeft" || e.key === "ArrowRight") {keys.add(e.key); e.preventDefault();}
+                if (e.key === "e" || e.key === "E" || e.key === "Enter") {useAction(); e.preventDefault();}
+            });
+            window.addEventListener("keyup", (e) => keys.delete(e.key));
+            if (!window.isSecureContext) $("secureNote").hidden = false;
+
+            function buzz(ms) {try {navigator.vibrate && navigator.vibrate(ms);} catch (_) { } }
+
+            // ===================== Lift / Use =====================
+            function useContext() {
+                if (!ball.alive || !ball.grounded || liftMoving()) return null;
+                if (ball.on === lift) return atBottom() ? "Go up" : "Go down";
+                if (Math.abs(ball.y - (lift.yBottom - R)) < 0.2 && ball.x > 53 && ball.x < 56.5 && !atBottom()) return "Call lift";
+                if (Math.abs(ball.y - (lift.yTop - R)) < 0.2 && ball.x > 59.5 && ball.x < 62 && !atTop()) return "Call lift";
+                return null;
+            }
+            function useAction() {
+                const c = useContext();
+                if (!c) return;
+                if (c === "Go up") lift.target = lift.yTop;
+                else if (c === "Go down") lift.target = lift.yBottom;
+                else lift.target = ball.y < 7 ? lift.yTop : lift.yBottom;
+                buzz(12);
+            }
+
+            // ===================== Dynamic colliders =====================
+            function crusherBottom(c, t) {
+                const p = ((t + c.phase) % CRUSH.period + CRUSH.period) % CRUSH.period;
+                if (p < 1.8) return CRUSH.up;
+                if (p < 2.05) {const k = (p - 1.8) / 0.25; return lerp(CRUSH.up, CRUSH.down, k * k);}
+                if (p < 2.6) return CRUSH.down;
+                return lerp(CRUSH.down, CRUSH.up, (p - 2.6) / 1.2);
+            }
+            const zapOn = (t) => ((t % zap.period) + zap.period) % zap.period < zap.onFor;
+            const zapWarn = (t) => {const p = ((t % zap.period) + zap.period) % zap.period; return p > zap.period - 0.45;};
+
+            function dynamicRects() {
+                const out = [{r: [lift.x0, lift.y, lift.x1, lift.y + 0.3], obj: lift}];
+                if (!atBottom()) out.push({r: [56.2, 8.6, 56.5, 10], obj: "gate"});
+                if (!atTop()) out.push({r: [59.5, 2.7, 59.8, 4], obj: "gate"});
+                out.push({r: [door.x0, door.top, door.x1, door.bottom], obj: door});
+                for (const c of crushers) out.push({r: [c.x0, 0.4, c.x1, c.bottom], obj: c});
+                return out;
+            }
+
+            function circleRectOverlap(cx, cy, r, [x0, y0, x1, y1]) {
+                const qx = clamp(cx, x0, x1), qy = clamp(cy, y0, y1);
+                return r - Math.hypot(cx - qx, cy - qy);
+            }
+
+            // ===================== Physics step =====================
+            function collideSeg(ax, ay, bx, by, obj) {
+                const ex = bx - ax, ey = by - ay;
+                const t = clamp(((ball.x - ax) * ex + (ball.y - ay) * ey) / (ex * ex + ey * ey), 0, 1);
+                const qx = ax + ex * t, qy = ay + ey * t;
+                let dx = ball.x - qx, dy = ball.y - qy;
+                const d = Math.hypot(dx, dy);
+                if (d >= R || d < 1e-7) return;
+                const nx = dx / d, ny = dy / d;
+                ball.x += nx * (R - d); ball.y += ny * (R - d);
+                const vn = ball.vx * nx + ball.vy * ny;
+                if (vn < 0) {
+                    if (-vn > BREAK_V) {breakBall("impact"); return;}
+                    const e = -vn > 2.5 ? BOUNCE_E : 0;
+                    ball.vx -= nx * vn * (1 + e); ball.vy -= ny * vn * (1 + e);
+                    if (-vn > 3) {buzz(clamp(Math.round(-vn * 3), 8, 30)); sparks(qx, qy, Math.round(-vn));}
+                }
+                if (ny < -0.55) {ball.grounded = true; ball.nx = nx; ball.ny = ny; ball.on = obj;}
+            }
+            function collideRect([x0, y0, x1, y1], obj) {
+                collideSeg(x0, y0, x1, y0, obj); collideSeg(x1, y0, x1, y1, obj);
+                collideSeg(x1, y1, x0, y1, obj); collideSeg(x0, y1, x0, y0, obj);
+            }
+
+            function step(dt) {
+                tiltSmooth += (tiltRaw - tiltSmooth) * (1 - Math.exp(-14 * dt));
+
+                // Moving parts.
+                const prevLiftY = lift.y;
+                if (liftMoving()) {
+                    const d = lift.target - lift.y;
+                    lift.y += Math.sign(d) * Math.min(Math.abs(d), lift.speed * dt);
+                }
+                lift.dy = lift.y - prevLiftY;
+                for (const c of crushers) c.bottom = crusherBottom(c, time);
+
+                const onPlate = ball.alive && ball.grounded && ball.x > plate.x0 && ball.x < plate.x1 && Math.abs(ball.y - (plate.y - R)) < 0.15;
+                plate.pressed = onPlate;
+                if (onPlate) door.timer = door.HOLD; else door.timer = Math.max(0, door.timer - dt);
+                const doorTarget = door.timer > 0 ? door.open : door.closed;
+                if (door.bottom < doorTarget) {
+                    const nb = Math.min(doorTarget, door.bottom + 2.2 * dt);
+                    // Safety stop: never close onto the ball.
+                    if (!ball.alive || circleRectOverlap(ball.x, ball.y, R, [door.x0, door.top, door.x1, nb]) <= 0) door.bottom = nb;
+                } else if (door.bottom > doorTarget) door.bottom = Math.max(doorTarget, door.bottom - 6 * dt);
+
+                if (!ball.alive) return;
+
+                // Ride the lift.
+                if (ball.on === lift) ball.y += lift.dy;
+
+                const s = input();
+                if (ball.grounded) {
+                    const tx = -ball.ny, ty = ball.nx;                 // tangent pointing right
+                    const gt = G * ty;                                  // gravity along the slope
+                    // Solid sphere rolling: 5/7 of the slope's pull, plus the player's tilt.
+                    ball.vx += (G * 0 - tx * gt * (2 / 7)) * dt + tx * (5 / 7) * G * s * dt;
+                    ball.vy += (G - ty * gt * (2 / 7)) * dt + ty * (5 / 7) * G * s * dt;
+                    const vt = ball.vx * tx + ball.vy * ty, k = 1 - Math.exp(-ROLL_K * dt);
+                    ball.vx -= tx * vt * k; ball.vy -= ty * vt * k;
+                } else {
+                    ball.vy += G * dt; // in the air only gravity acts; vx carries through
+                }
+                ball.vx = clamp(ball.vx, -MAX_VX, MAX_VX);
+
+                const px = ball.x;
+                ball.x += ball.vx * dt;
+                ball.y += ball.vy * dt;
+
+                ball.grounded = false; ball.on = null;
+                const dyn = dynamicRects();
+                for (let pass = 0; pass < 2 && ball.alive; pass++) {
+                    for (const e of EDGES) {collideSeg(e.ax, e.ay, e.bx, e.by, "static"); if (!ball.alive) return;}
+                    for (const d of dyn) {collideRect(d.r, d.obj); if (!ball.alive) return;}
+                }
+
+                // Spin: roll without slipping on the ground, keep spinning in the air.
+                if (ball.grounded) ball.omega = (ball.vx * -ball.ny + ball.vy * ball.nx) / R;
+                ball.angle += ball.omega * dt;
+
+                // Hazards.
+                for (const c of crushers) if (circleRectOverlap(ball.x, ball.y, R, [c.x0, 0.4, c.x1, c.bottom]) > 0.06) return breakBall("crush");
+                if (zapOn(time) && ball.x > zap.x0 - 0.1 && ball.x < zap.x1 + 0.1 && ball.y > zap.y - R - 0.08 && ball.y < zap.y) return breakBall("zap");
+                if (ball.y > PIT_Y) return breakBall("pit");
+
+                // Checkpoints and exit.
+                for (let i = cpIndex + 1; i < CHECKPOINTS.length; i++) {
+                    const c = CHECKPOINTS[i];
+                    if (ball.grounded && ball.x > c.x - 0.5 && Math.abs(ball.y - (c.y - R)) < 1.5) {cpIndex = i; $("cp").textContent = `${i + 1}/${CHECKPOINTS.length}`; buzz(20);}
+                }
+                if (ball.x > EXIT_X && ball.y > 8) finish();
+                topSpeed = Math.max(topSpeed, Math.min(MAX_VX, Math.abs(ball.vx)));
+            }
+
+            // Predict whether the current fall will break the ball.
+            function fallDanger() {
+                if (ball.grounded || !ball.alive) return 0;
+                let best = Infinity;
+                const tops = EDGES.filter((e) => e.ny < -0.3);
+                const dyn = dynamicRects().map((d) => ({ax: d.r[0], ay: d.r[1], bx: d.r[2], by: d.r[1]}));
+                for (const e of tops.concat(dyn)) {
+                    const lo = Math.min(e.ax, e.bx), hi = Math.max(e.ax, e.bx);
+                    if (ball.x < lo - 0.05 || ball.x > hi + 0.05) continue;
+                    const t = e.bx === e.ax ? 0 : (ball.x - e.ax) / (e.bx - e.ax);
+                    const y = e.ay + (e.by - e.ay) * clamp(t, 0, 1);
+                    if (y > ball.y && y < best) best = y;
+                }
+                if (best === Infinity) return 2;
+                const d = Math.max(0, best - ball.y - R);
+                const vImpact = Math.sqrt(Math.max(0, ball.vy) ** 2 + 2 * G * d);
+                return vImpact > BREAK_V ? 2 : vImpact > BREAK_V * 0.8 ? 1 : 0;
+            }
+
+            function breakBall(why) {
+                if (!ball.alive) return;
+                ball.alive = false; ball.deadT = 0;
+                if (why !== "retry") breaks++;
+                buzz(why === "retry" ? 15 : [40, 30, 60]);
+                for (let i = 0; i < 16; i++) {
+                    const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 5;
+                    particles.push({kind: "shard", x: ball.x, y: ball.y, vx: Math.cos(a) * s + ball.vx * 0.3, vy: Math.sin(a) * s - 2, life: 1.4, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 14, size: 0.05 + Math.random() * 0.08});
+                }
+                sparks(ball.x, ball.y, why === "zap" ? 30 : 18, why === "zap");
+            }
+            function sparks(x, y, n, blue) {
+                for (let i = 0; i < n; i++) {
+                    const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.6, s = 2 + Math.random() * 6;
+                    particles.push({kind: "spark", x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.35 + Math.random() * 0.4, blue: !!blue});
+                }
+            }
+            function spawn(i, resetCP) {
+                if (resetCP) {cpIndex = 0; $("cp").textContent = `1/${CHECKPOINTS.length}`;}
+                const c = CHECKPOINTS[i ?? cpIndex];
+                Object.assign(ball, {x: c.x, y: c.y - R - 0.01, vx: 0, vy: 0, omega: 0, grounded: false, on: null, alive: true, spawnT: 0.6});
+                door.timer = 0;
+            }
+            function finish() {
+                if (finished) return;
+                finished = true;
+                const m = Math.floor(time / 60), s = Math.floor(time % 60);
+                $("doneTime").textContent = `${m}:${String(s).padStart(2, "0")}`;
+                $("doneBreaks").textContent = breaks;
+                $("doneTop").textContent = topSpeed.toFixed(1);
+                setTimeout(() => {$("doneOverlay").hidden = false;}, 700);
+                buzz([30, 40, 30]);
+            }
+
+            function showToast(text) {
+                const t = $("toast");
+                t.textContent = text; t.style.opacity = "1"; toastTimer = 5;
+            }
+
+            // ===================== Rendering =====================
+            function polyPath(g, pts) {
+                g.beginPath();
+                pts.forEach(([x, y], i) => (i ? g.lineTo(sx(x), sy(y)) : g.moveTo(sx(x), sy(y))));
+                g.closePath();
+            }
+
+            function drawBackdrop(t) {
+                const sky = ctx.createLinearGradient(0, 0, 0, VH);
+                sky.addColorStop(0, "#020309");
+                sky.addColorStop(0.6, "#070b18");
+                sky.addColorStop(1, "#15110f");
+                ctx.fillStyle = sky;
+                ctx.fillRect(0, 0, VW, VH);
+
+                const far = 0.1, mid = 0.3;
+                const farBase = VH * 0.8 - camY * PX * 0.05;
+                const off1 = ((camX * PX * far) % TILE + TILE) % TILE;
+                for (let x = -off1; x < VW; x += TILE) ctx.drawImage(skyline, x, farBase - skyline.height);
+                if (skyTower && Math.sin(t * 2.2) > 0.2) {
+                    for (let x = -off1; x < VW; x += TILE) {
+                        const lx = x + skyTower.x, ly = farBase - skyline.height + skyTower.top - 4;
+                        const g = ctx.createRadialGradient(lx, ly, 0, lx, ly, 14);
+                        g.addColorStop(0, "rgba(255,60,50,0.9)"); g.addColorStop(1, "rgba(255,60,50,0)");
+                        ctx.fillStyle = g; ctx.fillRect(lx - 14, ly - 14, 28, 28);
+                    }
+                }
+                ctx.fillStyle = "#080b16";
+                ctx.fillRect(0, farBase, VW, VH - farBase);
+
+                const midBase = VH * 0.92 - camY * PX * 0.12;
+                const off2 = ((camX * PX * mid) % TILE + TILE) % TILE;
+                for (let x = -off2; x < VW; x += TILE) ctx.drawImage(midline, x, midBase - midline.height);
+                ctx.fillStyle = "#070a12";
+                ctx.fillRect(0, midBase - 1, VW, VH - midBase + 1);
+            }
+
+            function drawColumn(g, x, y0) {
+                const X = sx(x), Y0 = sy(y0), Y1 = sy(PIT_Y + 2), w = 0.24 * PX;
+                g.fillStyle = "#12161d";
+                g.fillRect(X - w / 2, Y0, w, Y1 - Y0);
+                g.fillStyle = "#1b212b";
+                g.fillRect(X - w / 2, Y0, w * 0.18, Y1 - Y0);
+                g.strokeStyle = "#12161d"; g.lineWidth = Math.max(1, 0.05 * PX);
+                const step = 1.6 * PX;
+                g.beginPath();
+                for (let y = Y0; y < Y1; y += step) {g.moveTo(X - w * 1.6, y); g.lineTo(X + w * 1.6, y + step); g.moveTo(X + w * 1.6, y); g.lineTo(X - w * 1.6, y + step);}
+                g.stroke();
+            }
+
+            function drawSolid(g, poly) {
+                polyPath(g, poly);
+                const ys = poly.map((p) => p[1]);
+                const grd = g.createLinearGradient(0, sy(Math.min(...ys)), 0, sy(Math.max(...ys)));
+                grd.addColorStop(0, "#2a313c");
+                grd.addColorStop(1, "#141920");
+                g.fillStyle = grd;
+                g.fill();
+                g.save();
+                g.clip();
+                // Panel seams every 2 m.
+                g.strokeStyle = "rgba(0,0,0,0.45)"; g.lineWidth = 1;
+                const xs = poly.map((p) => p[0]);
+                for (let x = Math.ceil(Math.min(...xs) / 2) * 2; x < Math.max(...xs); x += 2) {
+                    g.beginPath(); g.moveTo(sx(x), sy(Math.min(...ys))); g.lineTo(sx(x), sy(Math.max(...ys))); g.stroke();
+                }
+                g.restore();
+            }
+
+            function drawTopEdges(g) {
+                // Tread-plate band, highlight lip and rivets on every walkable surface.
+                for (const e of EDGES) {
+                    if (e.ny > -0.5) continue;
+                    const len = Math.hypot(e.bx - e.ax, e.by - e.ay), ux = (e.bx - e.ax) / len, uy = (e.by - e.ay) / len;
+                    const band = 0.16;
+                    g.fillStyle = "#3a4350";
+                    g.beginPath();
+                    g.moveTo(sx(e.ax), sy(e.ay)); g.lineTo(sx(e.bx), sy(e.by));
+                    g.lineTo(sx(e.bx - e.nx * band), sy(e.by - e.ny * band)); g.lineTo(sx(e.ax - e.nx * band), sy(e.ay - e.ny * band));
+                    g.closePath(); g.fill();
+                    g.strokeStyle = "rgba(255,255,255,0.08)"; g.lineWidth = Math.max(1, 0.03 * PX);
+                    g.beginPath();
+                    for (let d = 0.1; d < len; d += 0.22) {
+                        const x = e.ax + ux * d, y = e.ay + uy * d - e.ny * 0.08;
+                        g.moveTo(sx(x - 0.05), sy(y - 0.03)); g.lineTo(sx(x + 0.05), sy(y + 0.03));
+                    }
+                    g.stroke();
+                    g.strokeStyle = "#7d8899"; g.lineWidth = Math.max(1, 0.035 * PX);
+                    g.beginPath(); g.moveTo(sx(e.ax), sy(e.ay)); g.lineTo(sx(e.bx), sy(e.by)); g.stroke();
+                    g.fillStyle = "#59636f";
+                    for (let d = 0.25; d < len; d += 0.5) {
+                        const x = e.ax + ux * d - e.nx * 0.26, y = e.ay + uy * d - e.ny * 0.26;
+                        g.beginPath(); g.arc(sx(x), sy(y), Math.max(1, 0.03 * PX), 0, 6.283); g.fill();
+                    }
+                }
+            }
+
+            function hazardStripes(g, x0, y0, x1, y1) {
+                g.save();
+                g.beginPath(); g.rect(sx(x0), sy(y0), (x1 - x0) * PX, (y1 - y0) * PX); g.clip();
+                g.fillStyle = "#c99a1d"; g.fillRect(sx(x0), sy(y0), (x1 - x0) * PX, (y1 - y0) * PX);
+                g.fillStyle = "#14161a";
+                const w = 0.18 * PX;
+                for (let x = sx(x0) - (y1 - y0) * PX; x < sx(x1); x += w * 2) {
+                    g.beginPath(); g.moveTo(x, sy(y1)); g.lineTo(x + w, sy(y1)); g.lineTo(x + w + (y1 - y0) * PX, sy(y0)); g.lineTo(x + (y1 - y0) * PX, sy(y0)); g.closePath(); g.fill();
+                }
+                g.restore();
+            }
+
+            function drawWorld(t) {
+                const g = wctx;
+                g.clearRect(0, 0, VW, VH);
+
+                for (const [x, y] of COLUMNS) if (Math.abs(x - camX) * PX < VW) drawColumn(g, x, y);
+
+                // Lift shaft rails behind the lift.
+                g.fillStyle = "#151a22";
+                g.fillRect(sx(56.5), sy(0.4), 0.12 * PX, (10.35 - 0.4) * PX);
+                g.fillRect(sx(59.38), sy(0.4), 0.12 * PX, (10.35 - 0.4) * PX);
+                g.strokeStyle = "#1c222b"; g.lineWidth = 1;
+                g.beginPath(); for (let y = 0.8; y < 10.3; y += 0.6) {g.moveTo(sx(56.6), sy(y)); g.lineTo(sx(59.4), sy(y + 0.6));} g.stroke();
+
+                // Lamp posts and hanging lamps.
+                for (const L of LAMPS) {
+                    const X = sx(L.x), top = sy(L.y - L.h);
+                    g.fillStyle = "#1a1f27";
+                    g.fillRect(X - 0.05 * PX, top, 0.1 * PX, L.h * PX);
+                    g.fillRect(X, top, 0.7 * PX, 0.07 * PX);
+                    g.fillStyle = "#2a2f38";
+                    g.fillRect(X + 0.4 * PX, top + 0.05 * PX, 0.36 * PX, 0.12 * PX);
+                }
+                for (const L of HANGING) {
+                    g.strokeStyle = "#1a1f27"; g.lineWidth = Math.max(1, 0.03 * PX);
+                    g.beginPath(); g.moveTo(sx(L.x), sy(L.y)); g.lineTo(sx(L.x), sy(L.y + L.len)); g.stroke();
+                    g.fillStyle = "#262c35";
+                    g.beginPath(); g.moveTo(sx(L.x - 0.1), sy(L.y + L.len)); g.lineTo(sx(L.x + 0.1), sy(L.y + L.len));
+                    g.lineTo(sx(L.x + 0.3), sy(L.y + L.len + 0.22)); g.lineTo(sx(L.x - 0.3), sy(L.y + L.len + 0.22)); g.closePath(); g.fill();
+                }
+
+                // Signs.
+                g.textAlign = "center"; g.textBaseline = "middle";
+                g.font = `600 ${Math.max(8, Math.round(0.2 * PX))}px "IBM Plex Mono", ui-monospace, monospace`;
+                for (const S of SIGNS) {
+                    const w = (S.text.length * 0.13 + 0.36);
+                    g.fillStyle = "#1a1f27";
+                    g.fillRect(sx(S.x) - 0.03 * PX, sy(S.y - 1.3), 0.06 * PX, 1.3 * PX);
+                    hazardStripes(g, S.x - w / 2, S.y - 1.86, S.x + w / 2, S.y - 1.78);
+                    g.fillStyle = "#14171c";
+                    g.fillRect(sx(S.x - w / 2), sy(S.y - 1.78), w * PX, 0.48 * PX);
+                    g.strokeStyle = "#c99a1d"; g.lineWidth = 1;
+                    g.strokeRect(sx(S.x - w / 2) + 0.5, sy(S.y - 1.78) + 0.5, w * PX - 1, 0.48 * PX - 1);
+                    g.fillStyle = "#f0c24a";
+                    g.fillText(S.text, sx(S.x), sy(S.y - 1.54));
+                }
+
+                // Checkpoint posts.
+                CHECKPOINTS.forEach((c, i) => {
+                    if (i === 0) return;
+                    g.fillStyle = "#1a1f27";
+                    g.fillRect(sx(c.x + 0.6) - 0.04 * PX, sy(c.y - 1.1), 0.08 * PX, 1.1 * PX);
+                    g.fillStyle = i <= cpIndex ? "#7dff9a" : "#2b3a30";
+                    g.beginPath(); g.arc(sx(c.x + 0.6), sy(c.y - 1.15), 0.09 * PX, 0, 6.283); g.fill();
+                });
+
+                // Exit gate.
+                g.fillStyle = "#10141a";
+                g.fillRect(sx(117.6), sy(6.6), 2.2 * PX, 3.4 * PX);
+                g.fillStyle = "#0a1a10";
+                g.fillRect(sx(117.9), sy(6.9), 1.6 * PX, 3.1 * PX);
+                g.fillStyle = "#5dff8f";
+                g.font = `700 ${Math.round(0.3 * PX)}px "Chakra Petch", sans-serif`;
+                g.fillText("EXIT", sx(118.7), sy(6.25));
+
+                for (const poly of SOLIDS) drawSolid(g, poly);
+                drawTopEdges(g);
+
+                // Drop-edge warning stripes.
+                hazardStripes(g, 33.3, 3.0, 34, 3.15);
+                hazardStripes(g, 103.3, 9.0, 104, 9.15);
+                hazardStripes(g, 107, 10.0, 107.7, 10.15);
+
+                // Electrified plate.
+                const on = zapOn(t), warn = zapWarn(t);
+                g.fillStyle = on ? "#9fdcff" : warn ? "#3c5566" : "#20303b";
+                g.fillRect(sx(zap.x0), sy(zap.y) - 0.05 * PX, (zap.x1 - zap.x0) * PX, 0.12 * PX);
+                g.fillStyle = "#0b0f14";
+                for (let x = zap.x0 + 0.2; x < zap.x1; x += 0.4) g.fillRect(sx(x), sy(zap.y) - 0.05 * PX, 0.05 * PX, 0.12 * PX);
+
+                // Pressure plate and the indicator cable to the door.
+                g.fillStyle = plate.pressed ? "#c99a1d" : "#7a6420";
+                g.fillRect(sx(plate.x0), sy(plate.y) - (plate.pressed ? 0.02 : 0.08) * PX, (plate.x1 - plate.x0) * PX, 0.1 * PX);
+                const lamps = 8, lit = Math.ceil((door.timer / door.HOLD) * lamps);
+                for (let i = 0; i < lamps; i++) {
+                    const x = lerp(plate.x1 + 0.4, door.x0 - 0.4, i / (lamps - 1));
+                    g.fillStyle = i < lit ? "#ffcf6b" : "#2b2a24";
+                    g.beginPath(); g.arc(sx(x), sy(6.35), 0.06 * PX, 0, 6.283); g.fill();
+                }
+
+                // Door.
+                g.fillStyle = "#2b323d";
+                g.fillRect(sx(door.x0), sy(door.top), (door.x1 - door.x0) * PX, (door.bottom - door.top) * PX);
+                hazardStripes(g, door.x0, door.bottom - 0.25, door.x1, door.bottom);
+                g.fillStyle = door.timer > 0 ? "#7dff9a" : "#ff3b30";
+                g.beginPath(); g.arc(sx(82.2), sy(1.75), 0.07 * PX, 0, 6.283); g.fill();
+
+                // Crushers.
+                for (const c of crushers) {
+                    g.fillStyle = "#1a1f27";
+                    g.fillRect(sx((c.x0 + c.x1) / 2 - 0.12), sy(0.4), 0.24 * PX, (c.bottom - 0.9 + 0.5) * PX);
+                    g.fillStyle = "#343c48";
+                    g.fillRect(sx(c.x0), sy(c.bottom - 0.5), (c.x1 - c.x0) * PX, 0.5 * PX);
+                    hazardStripes(g, c.x0, c.bottom - 0.14, c.x1, c.bottom);
+                }
+
+                // Lift platform with a cage and gates.
+                const ly = lift.y;
+                g.fillStyle = "#39414d";
+                g.fillRect(sx(lift.x0), sy(ly), (lift.x1 - lift.x0) * PX, 0.3 * PX);
+                hazardStripes(g, lift.x0, ly, lift.x1, ly + 0.1);
+                g.strokeStyle = "#2a313b"; g.lineWidth = Math.max(1, 0.04 * PX);
+                g.beginPath();
+                g.moveTo(sx(lift.x0 + 0.05), sy(ly)); g.lineTo(sx(lift.x0 + 0.05), sy(ly - 2.2));
+                g.lineTo(sx(lift.x1 - 0.05), sy(ly - 2.2)); g.lineTo(sx(lift.x1 - 0.05), sy(ly));
+                g.stroke();
+                g.fillStyle = "#2a313b";
+                g.fillRect(sx(57.4), sy(ly - 2.35), 1.2 * PX, 0.15 * PX);
+                if (!atBottom()) hazardStripes(g, 56.2, 8.6, 56.5, 10);
+                if (!atTop()) hazardStripes(g, 59.5, 2.7, 59.8, 4);
+
+                // Beacons.
+                for (const b of BEACONS) {
+                    g.fillStyle = "#1a1f27";
+                    g.fillRect(sx(b.x) - 0.06 * PX, sy(b.y) - 0.16 * PX, 0.12 * PX, 0.16 * PX);
+                    g.fillStyle = Math.sin(t * 6 + b.x) > 0 ? "#ffa21a" : "#4a3210";
+                    g.beginPath(); g.arc(sx(b.x), sy(b.y - 0.2), 0.07 * PX, 0, 6.283); g.fill();
+                }
+
+                drawBall(g, t);
+                drawParticles(g, false);
+            }
+
+            function drawBall(g, t) {
+                if (!ball.alive) return;
+                const X = sx(ball.x), Y = sy(ball.y);
+                const pop = ball.spawnT > 0 ? 1 - ball.spawnT / 0.6 : 1;
+                const r = R * PX * (0.6 + 0.4 * pop);
+                g.save();
+                g.globalAlpha = clamp(pop * 1.2, 0, 1);
+                // Contact shadow.
+                if (ball.grounded) {
+                    g.fillStyle = "rgba(0,0,0,0.5)";
+                    g.beginPath(); g.ellipse(X, Y + r * 0.95, r * 0.9, r * 0.18, 0, 0, 6.283); g.fill();
+                }
+                const body = g.createRadialGradient(X - r * 0.35, Y - r * 0.4, r * 0.05, X, Y, r);
+                body.addColorStop(0, "#f06a5f");
+                body.addColorStop(0.35, "#c3242c");
+                body.addColorStop(0.8, "#6e0f17");
+                body.addColorStop(1, "#2a0609");
+                g.fillStyle = body;
+                g.beginPath(); g.arc(X, Y, r, 0, 6.283); g.fill();
+                // Seam where the middle ring will one day split off.
+                g.strokeStyle = "rgba(0,0,0,0.5)"; g.lineWidth = Math.max(1, r * 0.06);
+                g.beginPath(); g.arc(X, Y, r * 0.68, 0, 6.283); g.stroke();
+                g.strokeStyle = "rgba(255,200,190,0.18)"; g.lineWidth = 1;
+                g.beginPath(); g.arc(X, Y, r * 0.72, -2.2, -0.8); g.stroke();
+                // Bolts turn with the roll.
+                for (let i = 0; i < 4; i++) {
+                    const a = ball.angle + i * Math.PI / 2;
+                    g.fillStyle = "rgba(210,210,215,0.75)";
+                    g.beginPath(); g.arc(X + Math.cos(a) * r * 0.84, Y + Math.sin(a) * r * 0.84, Math.max(1, r * 0.07), 0, 6.283); g.fill();
+                }
+                // Hub with status light.
+                g.fillStyle = "#1c2027";
+                g.beginPath(); g.arc(X, Y, r * 0.3, 0, 6.283); g.fill();
+                const danger = fallDanger();
+                g.fillStyle = danger === 2 ? "#ff3b30" : danger === 1 ? "#ffa21a" : "#7dff9a";
+                g.beginPath(); g.arc(X, Y, r * 0.13, 0, 6.283); g.fill();
+                g.fillStyle = "rgba(255,255,255,0.45)";
+                g.beginPath(); g.ellipse(X - r * 0.38, Y - r * 0.45, r * 0.2, r * 0.11, -0.7, 0, 6.283); g.fill();
+                g.restore();
+            }
+
+            function drawParticles(g, additive) {
+                for (const p of particles) {
+                    if ((p.kind === "spark") !== additive) continue;
+                    if (p.kind === "shard") {
+                        g.save();
+                        g.translate(sx(p.x), sy(p.y)); g.rotate(p.rot);
+                        g.fillStyle = `rgba(190,40,45,${clamp(p.life, 0, 1)})`;
+                        const s = p.size * PX;
+                        g.beginPath(); g.moveTo(-s, -s * 0.6); g.lineTo(s, 0); g.lineTo(-s * 0.4, s * 0.8); g.closePath(); g.fill();
+                        g.restore();
+                    } else {
+                        const a = clamp(p.life * 2, 0, 1);
+                        g.strokeStyle = p.blue ? `rgba(160,220,255,${a})` : `rgba(255,190,90,${a})`;
+                        g.lineWidth = 1.5;
+                        g.beginPath(); g.moveTo(sx(p.x), sy(p.y)); g.lineTo(sx(p.x - p.vx * 0.03), sy(p.y - p.vy * 0.03)); g.stroke();
+                    }
+                }
+            }
+
+            function lights(t) {
+                const out = [];
+                for (const L of LAMPS) {
+                    let i = 0.95;
+                    if (L.flicker) {const f = Math.sin(t * 23) * Math.sin(t * 7.3 + 1) * Math.sin(t * 1.7); if (f > 0.35) i = 0.25;}
+                    out.push({x: L.x + 0.58, y: L.y - L.h + 0.2, r: 5.5, i, c: L.color, cone: L.y});
+                }
+                for (const L of HANGING) out.push({x: L.x, y: L.y + L.len + 0.25, r: 4.6, i: 0.9, c: L.color, cone: L.y + L.len + 3.4});
+                for (const b of BEACONS) if (Math.sin(t * 6 + b.x) > 0) out.push({x: b.x, y: b.y - 0.2, r: 2.2, i: 0.6, c: [255, 162, 26]});
+                if (zapOn(t)) out.push({x: (zap.x0 + zap.x1) / 2, y: zap.y - 0.2, r: 3.5, i: 0.85, c: [140, 210, 255]});
+                out.push({x: (lift.x0 + lift.x1) / 2, y: lift.y - 2.1, r: 3, i: 0.7, c: [205, 225, 255]});
+                for (const c of crushers) {
+                    const p = ((t + c.phase) % CRUSH.period + CRUSH.period) % CRUSH.period;
+                    if (p > 1.25 && p < 2.05) out.push({x: (c.x0 + c.x1) / 2, y: 0.7, r: 2.4, i: 0.8, c: [255, 60, 48]});
+                }
+                out.push({x: 82.2, y: 1.75, r: 1.6, i: 0.6, c: door.timer > 0 ? [125, 255, 154] : [255, 59, 48]});
+                CHECKPOINTS.forEach((c, i) => {if (i > 0 && i <= cpIndex) out.push({x: c.x + 0.6, y: c.y - 1.15, r: 1.8, i: 0.6, c: [125, 255, 154]});});
+                out.push({x: 118.7, y: 6.3, r: 4.5, i: 0.9, c: [93, 255, 143]});
+                if (ball.alive) out.push({x: ball.x, y: ball.y, r: 1.5, i: 0.55, c: [255, 120, 110]});
+                return out.filter((L) => Math.abs(sx(L.x) - VW / 2) < VW / 2 + L.r * PX && Math.abs(sy(L.y) - VH / 2) < VH / 2 + L.r * PX);
+            }
+
+            function applyLighting(list) {
+                const g = lctx;
+                g.globalCompositeOperation = "source-over";
+                g.clearRect(0, 0, VW, VH);
+                g.fillStyle = "rgba(0,0,0,0.9)";
+                g.fillRect(0, 0, VW, VH);
+                g.globalCompositeOperation = "destination-out";
+                for (const L of list) {
+                    const X = sx(L.x), Y = sy(L.y), r = L.r * PX;
+                    const grd = g.createRadialGradient(X, Y, 0, X, Y, r);
+                    grd.addColorStop(0, `rgba(0,0,0,${L.i})`);
+                    grd.addColorStop(0.45, `rgba(0,0,0,${L.i * 0.45})`);
+                    grd.addColorStop(1, "rgba(0,0,0,0)");
+                    g.fillStyle = grd;
+                    g.fillRect(X - r, Y - r, r * 2, r * 2);
+                }
+                wctx.globalCompositeOperation = "source-atop";
+                wctx.drawImage(lcv, 0, 0, VW, VH);
+                wctx.globalCompositeOperation = "source-over";
+            }
+
+            function drawGlows(list) {
+                ctx.save();
+                ctx.globalCompositeOperation = "lighter";
+                for (const L of list) {
+                    const [r, g, b] = L.c;
+                    const X = sx(L.x), Y = sy(L.y), rad = L.r * PX;
+                    const tint = ctx.createRadialGradient(X, Y, 0, X, Y, rad);
+                    tint.addColorStop(0, `rgba(${r},${g},${b},${0.14 * L.i})`);
+                    tint.addColorStop(1, `rgba(${r},${g},${b},0)`);
+                    ctx.fillStyle = tint;
+                    ctx.fillRect(X - rad, Y - rad, rad * 2, rad * 2);
+                    const bulb = ctx.createRadialGradient(X, Y, 0, X, Y, 0.35 * PX);
+                    bulb.addColorStop(0, `rgba(255,255,255,${0.9 * L.i})`);
+                    bulb.addColorStop(0.3, `rgba(${r},${g},${b},${0.6 * L.i})`);
+                    bulb.addColorStop(1, `rgba(${r},${g},${b},0)`);
+                    if (L !== list[list.length - 1] || !ball.alive) {ctx.fillStyle = bulb; ctx.fillRect(X - 0.35 * PX, Y - 0.35 * PX, 0.7 * PX, 0.7 * PX);}
+                    if (L.cone !== undefined) {
+                        const top = Y, bot = sy(L.cone), w0 = 0.25 * PX, w1 = 1.6 * PX;
+                        const cg = ctx.createLinearGradient(0, top, 0, bot);
+                        cg.addColorStop(0, `rgba(${r},${g},${b},${0.12 * L.i})`);
+                        cg.addColorStop(1, `rgba(${r},${g},${b},0)`);
+                        ctx.fillStyle = cg;
+                        ctx.beginPath(); ctx.moveTo(X - w0, top); ctx.lineTo(X + w0, top); ctx.lineTo(X + w1, bot); ctx.lineTo(X - w1, bot); ctx.closePath(); ctx.fill();
+                    }
+                }
+                // Arcs across the live plate.
+                if (zapOn(time)) {
+                    ctx.strokeStyle = "rgba(170,225,255,0.85)"; ctx.lineWidth = 1.4;
+                    for (let k = 0; k < 3; k++) {
+                        ctx.beginPath();
+                        let x = zap.x0;
+                        ctx.moveTo(sx(x), sy(zap.y - 0.05));
+                        while (x < zap.x1) {x += 0.2 + Math.random() * 0.2; ctx.lineTo(sx(Math.min(x, zap.x1)), sy(zap.y - 0.05 - Math.random() * 0.35));}
+                        ctx.stroke();
+                    }
+                }
+                drawParticles(ctx, true);
+                ctx.restore();
+            }
+
+            // ===================== Loop =====================
+            let last = performance.now(), acc = 0, hudTick = 0;
+            const STEP = 1 / 240;
+            function frame(now) {
+                let dt = clamp((now - last) / 1000, 0, 0.05);
+                last = now;
+
+                if (started && !finished) {
+                    time += dt;
+                    acc += dt;
+                    while (acc >= STEP) {step(STEP); if (!finished) { } acc -= STEP;}
+                    if (!ball.alive) {ball.deadT += dt; if (ball.deadT > 1.3) spawn();}
+                    if (ball.spawnT > 0) ball.spawnT = Math.max(0, ball.spawnT - dt);
+                }
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.vy += G * dt * (p.kind === "spark" ? 0.6 : 1);
+                    p.x += p.vx * dt; p.y += p.vy * dt;
+                    if (p.rot !== undefined) p.rot += p.vr * dt;
+                    p.life -= dt;
+                    if (p.life <= 0) particles.splice(i, 1);
+                }
+
+                // Camera: lead in the direction of travel, keep a little more room below.
+                const tx = ball.x + clamp(ball.vx * 0.45, -3, 3);
+                const ty = ball.y + 0.6;
+                camX += (tx - camX) * (1 - Math.exp(-4 * dt));
+                camY += (ty - camY) * (1 - Math.exp(-3 * dt));
+
+                drawBackdrop(time);
+                drawWorld(time);
+                const L = lights(time);
+                applyLighting(L);
+                ctx.drawImage(wcv, 0, 0, VW, VH);
+                drawGlows(L);
+
+                if (++hudTick % 6 === 0) {
+                    $("speed").textContent = Math.hypot(ball.vx, ball.vy).toFixed(1);
+                    const c = useContext();
+                    const btn = $("useBtn");
+                    if (c && started && !finished) {btn.hidden = false; btn.textContent = c;} else btn.hidden = true;
+                    if (sensorLive && now - lastSensorAt > 2500) {sensorLive = false; setStatus("none");}
+                }
+                if (started && toastIdx < TOASTS.length && ball.alive && ball.x > TOASTS[toastIdx].x) {showToast(TOASTS[toastIdx].text); toastIdx++;}
+                if (toastTimer > 0) {toastTimer -= dt; if (toastTimer <= 0) $("toast").style.opacity = "0";}
+
+                requestAnimationFrame(frame);
+            }
+
+            if (location.hash === "#debug") {
+                window.__game = {ball, lift, crushers, door, get time() {return time;}, get finished() {return finished;}, get breaks() {return breaks;}, get cp() {return cpIndex;}, zapOn: () => zapOn(time), useContext, danger: fallDanger};
+            }
+
+            window.addEventListener("resize", resize);
+            if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener("change", () => setTimeout(resize, 150));
+            resize();
+            requestAnimationFrame(frame);
+        })();
+    </script>
+</body>
+
+</html>
