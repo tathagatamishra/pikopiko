@@ -1,5 +1,5 @@
-// GYRON Pocket offline worker: caches the app shell and the fonts it uses.
-const CACHE = "gyron-v1";
+// Piko Piko offline worker: caches the app shell and the fonts it uses.
+const CACHE = "pikopiko-v2";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
