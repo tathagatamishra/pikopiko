@@ -1,5 +1,5 @@
 // Piko Piko offline worker: caches the app shell and the fonts it uses.
-const CACHE = "pikopiko-v7";
+const CACHE = "pikopiko-v9";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/apple-touch-icon.png", "icons/favicon-48.png"];
 
 self.addEventListener("install", (e) => {
