@@ -1,7 +1,7 @@
 {
   "name": "Piko Piko",
   "short_name": "Piko Piko",
-  "description": "A tilt-controlled handheld console with Night Yard, a physics platformer for a mechanical ball.",
+  "description": "A tilt-controlled handheld console with physics platformer levels for a mechanical ball.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
