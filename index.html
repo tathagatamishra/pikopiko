@@ -243,6 +243,11 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
           mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 12'><path d='M1 1h7M1.5 3.5l6-1M1.5 6l6-1M1.5 8.5l6-1M1 11h7' stroke='black' stroke-width='1.6' fill='none' stroke-linecap='round'/></svg>") center / contain no-repeat; }
 .jump-ico.ready { color: #7dff9a; filter: drop-shadow(0 0 4px #7dff9a); }
 .jump-ico.charge { color: #ffa21a; }
+.boost-ico { display: inline-block; width: 10px; height: 12px; background: currentColor; color: rgba(255,255,255,0.22);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 12'><path d='M1.5 6l3.5-3.5L8.5 6M1.5 10.5L5 7l3.5 3.5' stroke='black' stroke-width='1.7' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") center / contain no-repeat;
+          mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 12'><path d='M1.5 6l3.5-3.5L8.5 6M1.5 10.5L5 7l3.5 3.5' stroke='black' stroke-width='1.7' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") center / contain no-repeat; }
+.boost-ico.ready { color: #6ef0ff; filter: drop-shadow(0 0 4px #6ef0ff); }
+.boost-ico.used { color: rgba(110,240,255,0.3); }
 .pips i { width: 7px; height: 7px; border-radius: 2px; background: rgba(255,255,255,0.16); }
 .pips i.on { background: #7dff9a; box-shadow: 0 0 6px #7dff9a; }
 .lcd-hud .dot.live { background: #7dff9a; box-shadow: 0 0 6px #7dff9a; }
@@ -274,6 +279,8 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
 .lib li.sel .tx small { opacity: 0.85; }
 .lib .cart.l2 { background: linear-gradient(180deg, #1a2330 0 30%, #c9d6e2 30% 62%, #5d6878 62% 66%, #2a3442 66%); }
 .lib .cart.l2::before { left: 14%; top: 34%; width: 72%; height: 4%; border-radius: 2px; background: #3ee6ff; box-shadow: 0 0 8px #3ee6ff; }
+.lib .cart.l3 { background: radial-gradient(ellipse 60% 30% at 50% 30%, rgba(255,140,50,0.45), transparent 70%), linear-gradient(180deg, #1a0d09 0 62%, #ffb04a 62% 65%, #e0521c 65% 74%, #5a1608 74%); }
+.lib .cart.l3::before { left: 64%; top: 8%; width: 14%; height: 50%; border-radius: 1px; background: #2a1712; box-shadow: -14px 6px 0 -1px #2a1712; }
 .lib .cart::after { content: ""; position: absolute; left: 42%; top: 47%; width: 16%; height: 16%; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ff8a7c, #d32a33 55%, #4a0710); }
 .stats { display: flex; gap: 6px; }
 .stats div { padding: 5px 8px; border: 1px solid rgba(255,176,86,0.35); }
@@ -420,7 +427,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
         <div class="screen" id="screen">
           <canvas id="scene" aria-label="Night Yard, a dark industrial level. Tilt to roll the ball."></canvas>
           <div class="lcd lcd-hud">
-            <span class="hl"><i class="dot" id="statusDot"></i><i class="jump-ico lock" id="jumpIco"></i><span id="statusText" hidden>OFF</span><b id="speed" hidden>0.0</b><b id="cp" hidden>1/6</b></span>
+            <span class="hl"><i class="dot" id="statusDot"></i><i class="jump-ico lock" id="jumpIco"></i><i class="boost-ico lock" id="boostIco" hidden></i><span id="statusText" hidden>OFF</span><b id="speed" hidden>0.0</b><b id="cp" hidden>1/6</b></span>
             <span class="pips" id="pips"></span>
           </div>
           <div class="lcd lcd-toast" id="toast" style="opacity:0"></div>
@@ -567,6 +574,11 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
   const JUMP_BUFFER = 0.12;  // a press this early before landing still jumps, s
   const CONV_K = 1.6;        // how strongly a belt drags the ball toward its speed, 1/s
   const FIT_DUR = 2.6;       // module fitting animation, s
+  const BOOST_V = 4.6;       // thruster kick in mid-air, m/s straight up (≈ 1.1 m more); also cancels a fall
+  const BOOST_TILT = 1.8;    // sideways kick per unit of tilt when the thruster fires, m/s
+  const GUST = 22;           // steam vent push at the grate, m/s²; fades to nothing at the top of the plume
+  const GUST_DRAG = 3.0;     // the plume's drag on vertical speed, 1/s (high, so the ball settles into a steady hover)
+  const GUST_CTRL = 0.5;     // share of tilt steering while floating in steam
 
   // ===================== Levels =====================
   // Units are metres, y points down. A solid is a polygon, or { p: polygon, s: style }.
@@ -575,6 +587,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
   const THEMES = {
     yard: { backdrop: "yard", dark: 0.9, glow: 0.14, solid: ["#2a313c", "#141920"], edge: "tread", sign: "hazard" },
     factory: { backdrop: "factory", dark: 0.7, glow: 0.16, solid: ["#4a5463", "#1b2129"], edge: "polished", sign: "modern" },
+    foundry: { backdrop: "foundry", dark: 0.8, glow: 0.2, solid: ["#3b302b", "#160f0d"], edge: "cast", sign: "hazard" },
   };
 
   const LEVELS = [
@@ -697,12 +710,75 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
         { x: 79, text: "JUMP!" }, { x: 92, text: "RUN AND JUMP" }, { x: 117, text: "HURRY!" },
       ],
     },
+
+    // ---------------------------------------------------------------- Level 3
+    {
+      id: "foundry", n: 3, name: "THE FOUNDRY", theme: "foundry", art: "l3", pit: 6, airControl: 0.12, jumpFromStart: true,
+      solids: [
+        // Charging floor with two melt troughs, and the forge hammers under a low roof
+        rect(-1, 0, 9, 1.4), rect(-1.6, -12, -0.6, 0.6),
+        rect(11.5, 0, 30.5, 1.4), { p: rect(19, -4.4, 33, -3.9), s: "ceil" },
+        rect(9, 1.2, 11.5, 1.4), rect(30.5, 1.2, 32.3, 1.4),
+        rect(32.3, 0, 38, 1.4),
+        // Steam vent up to the crane deck
+        rect(38, -3.2, 52, 3.6), rect(52, 3.0, 68.1, 3.6),
+        // Workshop deck where the crane lands, then the boost trials
+        rect(68.1, -3.2, 95, 3.6), { p: rect(72, -7.6, 90, -7.1), s: "ceil" },
+        rect(95, -5.1, 100.5, 1.4),
+        rect(106, -5.1, 113, 1.4), rect(100.5, 1.2, 106, 1.4),
+        rect(113, -3.2, 121, 1.4),
+        rect(121, -7.4, 131, 1.4),
+        rect(131, -2.6, 148, 1.4), rect(147.4, -12, 148.4, -2.6),
+      ],
+      checkpoints: [
+        { x: 2, y: 0 }, { x: 13, y: 0 }, { x: 33.2, y: 0 }, { x: 40, y: -3.2 }, { x: 70, y: -3.2 }, { x: 84, y: -3.2 },
+        { x: 92, y: -3.2 }, { x: 108.5, y: -5.1 }, { x: 115, y: -3.2 }, { x: 123, y: -7.4 }, { x: 133, y: -2.6 },
+      ],
+      exit: { x0: 140, floor: -2.6 },
+      melts: [{ x0: 9, x1: 11.5, y: 0.55, d: 0.65 }, { x0: 30.5, x1: 32.3, y: 0.55, d: 0.65 }, { x0: 52, x1: 68.1, y: 0.9, d: 2.1 }, { x0: 100.5, x1: 106, y: -1.0, d: 2.2 }],
+      crushers: [
+        { x0: 23.4, x1: 24.6, phase: 0, top: -3.9, up: -2.0, down: -0.02, period: 3.6 },
+        { x0: 27.4, x1: 28.6, phase: 1.8, top: -3.9, up: -2.0, down: -0.02, period: 3.6 },
+      ],
+      vents: [
+        { x0: 35.4, x1: 37.6, y: 0, h: 7.5, period: 4.2, onFor: 2.8, phase: 0 },
+        { x0: 118.6, x1: 120.8, y: -3.2, h: 6, period: 4.2, onFor: 2.8, phase: 1.0 },
+      ],
+      movers: [{ w: 2.4, y: -3.2, xa: 52.1, xb: 65.7, speed: 2.2, wait: 1.6, rail: -9.5 }],
+      dock: { x: 80, y: -3.2, gives: "double" },
+      doors: [
+        { x0: 88, x1: 88.3, top: -7.1, closed: -3.2, open: -5.0, hold: 0.6, closeSpeed: 4, openSpeed: 9, style: "glass", sensor: [85, 91.5], needDouble: true, light: [88.15, -6.85] },
+      ],
+      lamps: [{ x: 15, y: 0, h: 3.4 }, { x: 44, y: -3.2, h: 3.4 }, { x: 93, y: -3.2, h: 3.2 }, { x: 109.5, y: -5.1, h: 3.2 }, { x: 136, y: -2.6, h: 3.6 }],
+      hanging: [{ x: 76, y: -7.1, len: 1.0, warm: true }, { x: 84, y: -7.1, len: 1.0, warm: true }, { x: 117, y: -12, len: 4.2, warm: true }, { x: 126, y: -12, len: 1.6, warm: true }],
+      beacons: [{ x: 51.6, y: -3.2 }, { x: 68.5, y: -3.2 }, { x: 130.6, y: -7.4 }],
+      signs: [
+        { x: 6.4, y: 0, text: "HOT METAL" }, { x: 20.6, y: 0, text: "FORGE" }, { x: 34.2, y: 0, text: "STEAM" },
+        { x: 49.6, y: -3.2, text: "CRANE" }, { x: 128.6, y: -7.4, text: "DROP 5 m" },
+      ],
+      stripes: [
+        [8.3, 0, 9, 0.12], [11.5, 0, 12.2, 0.12], [29.8, 0, 30.5, 0.12], [32.3, 0, 33, 0.12], [51.3, -3.2, 52, -3.08],
+        [68.1, -3.2, 68.8, -3.08], [99.8, -5.1, 100.5, -4.98], [106, -5.1, 106.7, -4.98], [130.3, -7.4, 131, -7.28],
+      ],
+      decor: [
+        { k: "furnace", x: 4.6, y: 0, w: 2.6, h: 3.0 }, { k: "furnace", x: 45.5, y: -3.2, w: 2.2, h: 2.6 },
+        { k: "crate", x: 16.6, y: 0, w: 1.2, h: 0.9 }, { k: "crate", x: 17.7, y: 0, w: 0.8, h: 0.6 },
+        { k: "machine", x: 75, y: -3.2, w: 2.6, h: 2.2 }, { k: "tank", x: 77.4, y: -3.2, w: 0.8, h: 2.1 },
+        { k: "console", x: 83, y: -3.2, w: 1.4, h: 0.95 }, { k: "monitor", x: 83, y: -4.85, w: 1.1, h: 0.7 },
+        { k: "furnace", x: 136.5, y: -2.6, w: 2.4, h: 2.8 },
+      ],
+      toasts: [
+        { x: -99, text: "JUMP THE MELT" }, { x: 20.5, text: "TIME IT" }, { x: 34, text: "RIDE THE STEAM" },
+        { x: 49, text: "WAIT FOR CRANE" }, { x: 93, text: "JUMP TWICE" }, { x: 116, text: "STEAM + JUMP" }, { x: 128, text: "JUMP TO BRAKE" },
+      ],
+    },
   ];
 
 
   // ===================== Level state =====================
   let LV = null, TH = null, levelIdx = 0;
   let SOLIDS = [], EDGES = [], CHECKPOINTS = [], lifts = [], doors = [], zaps = [], crushers = [], lasers = [], conveyors = [], dock = null;
+  let movers = [], vents = [], melts = [];
   let PIT_Y = 17;
 
   function inside(pt, poly) {
@@ -743,7 +819,11 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     lasers = LV.lasers || [];
     conveyors = LV.conveyors || [];
     dock = LV.dock || null;
+    movers = (LV.movers || []).map((m) => ({ ...m, x: m.xa, t: m.phase || 0, dx: 0, vx: 0, isMover: true }));
+    vents = LV.vents || [];
+    melts = LV.melts || [];
     hasJump = !!LV.jumpFromStart; fitT = -1; jumpCool = 0; jumpBuf = 0; springFx = null;
+    hasDouble = false; boosts = 1; kickT = 1; boostFx = null;
     toastIdx = 0; pipsShown = -1;
     if (VW) buildBackdrop();
   }
@@ -756,6 +836,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
   let dangerNow = 0;
   let toastIdx = 0, toastTimer = 0, pipsShown = -1;
   let hasJump = false, fitT = -1, jumpCool = 0, jumpBuf = 0, airT = 0, springFx = null, beltV = 0;
+  let hasDouble = false, boosts = 1, kickT = 1, boostFx = null, simMode = false;
 
   // ===================== Canvas =====================
   const cvs = $("scene"), ctx = cvs.getContext("2d");
@@ -812,8 +893,9 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
   function buildBackdrop() {
     if (!TH) return;
     const h = Math.max(260, VH);
-    skyline = buildSkyline(h, TH.backdrop === "yard" ? 0.028 : 0.05);
     midline = null; wallTile = null;
+    if (TH.backdrop === "foundry") { buildFoundry(h); return; }
+    skyline = buildSkyline(h, TH.backdrop === "yard" ? 0.028 : 0.05);
     if (TH.backdrop === "yard") {
       // Mid layer: chimneys, tanks, a crane.
       midline = document.createElement("canvas");
@@ -898,6 +980,83 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     }
   }
 
+  // Foundry hall: far blast furnaces and stacks against the glow of the pour, then the hall's steel frame and chains.
+  function buildFoundry(h) {
+    skyTower = null;
+    skyline = document.createElement("canvas");
+    skyline.width = TILE; skyline.height = h;
+    let g = skyline.getContext("2d");
+    const R1 = rnd(73), k = h / 420;
+    let x = 0;
+    while (x < TILE) {
+      const kind = R1();
+      if (kind < 0.4) {
+        // Blast furnace: a tapered tower, downcomer pipes and a glowing tap hole.
+        const w = 70 + R1() * 50, th = (190 + R1() * 90) * k, base = h;
+        g.fillStyle = "#150b08";
+        g.beginPath(); g.moveTo(x, base); g.lineTo(x + w * 0.12, base - th * 0.55); g.lineTo(x + w * 0.3, base - th);
+        g.lineTo(x + w * 0.7, base - th); g.lineTo(x + w * 0.88, base - th * 0.55); g.lineTo(x + w, base); g.closePath(); g.fill();
+        g.strokeStyle = "#150b08"; g.lineWidth = 6;
+        g.beginPath(); g.moveTo(x + w * 0.5, base - th); g.lineTo(x + w * 0.5, base - th - 30 * k); g.lineTo(x + w * 1.3, base - th - 30 * k); g.lineTo(x + w * 1.3, base - th * 0.3); g.stroke();
+        const hx = x + w * 0.5, hy = base - th * 0.12;
+        const gl = g.createRadialGradient(hx, hy, 0, hx, hy, 46 * k);
+        gl.addColorStop(0, "rgba(255,170,70,0.75)"); gl.addColorStop(0.3, "rgba(255,90,30,0.3)"); gl.addColorStop(1, "rgba(255,60,20,0)");
+        g.fillStyle = gl; g.fillRect(hx - 46 * k, hy - 46 * k, 92 * k, 92 * k);
+        g.fillStyle = "#ffcf80"; g.fillRect(hx - 5, hy - 4, 10, 8);
+        x += w * 1.5 + R1() * 40;
+      } else if (kind < 0.7) {
+        // Smoke stacks with a dull lip glow.
+        const n = 1 + Math.floor(R1() * 3);
+        for (let i = 0; i < n; i++) {
+          const sw = 12 + R1() * 8, sh = (230 + R1() * 120) * k;
+          g.fillStyle = "#120907"; g.fillRect(x, h - sh, sw, sh);
+          g.fillStyle = "rgba(255,110,40,0.25)"; g.fillRect(x, h - sh, sw, 3);
+          x += sw + 10 + R1() * 16;
+        }
+        x += 30 + R1() * 40;
+      } else {
+        // Low shed with a lit clerestory.
+        const w = 120 + R1() * 110, bh = (60 + R1() * 40) * k;
+        g.fillStyle = "#130a08"; g.fillRect(x, h - bh, w, bh);
+        g.beginPath(); g.moveTo(x, h - bh); g.lineTo(x + w / 2, h - bh - 24 * k); g.lineTo(x + w, h - bh); g.fill();
+        g.fillStyle = "rgba(255,150,70,0.35)";
+        for (let wx = x + 8; wx < x + w - 10; wx += 14) g.fillRect(wx, h - bh + 6, 8, 5);
+        x += w + 30 + R1() * 40;
+      }
+    }
+
+    midline = document.createElement("canvas");
+    midline.width = TILE; midline.height = h;
+    g = midline.getContext("2d");
+    const R2 = rnd(91);
+    g.fillStyle = "#0c0706"; g.strokeStyle = "#0c0706";
+    // Roof truss along the top.
+    g.fillRect(0, h * 0.06, TILE, 8); g.fillRect(0, h * 0.2, TILE, 5);
+    g.lineWidth = 3; g.beginPath();
+    for (let tx = 0; tx < TILE; tx += 48) { g.moveTo(tx, h * 0.06 + 8); g.lineTo(tx + 24, h * 0.2); g.lineTo(tx + 48, h * 0.06 + 8); }
+    g.stroke();
+    // I-beam columns with knee braces.
+    for (let cx = 90; cx < TILE; cx += 340) {
+      g.fillRect(cx, h * 0.06, 16, h); g.fillRect(cx - 5, h * 0.06, 26, 5);
+      g.beginPath(); g.moveTo(cx, h * 0.2 + 30); g.lineTo(cx - 40, h * 0.2 + 5); g.moveTo(cx + 16, h * 0.2 + 30); g.lineTo(cx + 56, h * 0.2 + 5); g.stroke();
+    }
+    // Hanging chains, hooks and the odd ladle.
+    for (let cx = 200; cx < TILE; cx += 170 + R2() * 160) {
+      const len = (60 + R2() * 140) * k;
+      g.lineWidth = 2; g.setLineDash([5, 3]);
+      g.beginPath(); g.moveTo(cx, h * 0.2 + 5); g.lineTo(cx, h * 0.2 + 5 + len); g.stroke();
+      g.setLineDash([]);
+      const y = h * 0.2 + 5 + len;
+      if (R2() < 0.35) {
+        g.beginPath(); g.moveTo(cx - 26, y + 6); g.lineTo(cx + 26, y + 6); g.lineTo(cx + 18, y + 44); g.lineTo(cx - 18, y + 44); g.closePath(); g.fill();
+        g.lineWidth = 3; g.beginPath(); g.moveTo(cx - 26, y + 8); g.lineTo(cx, y); g.lineTo(cx + 26, y + 8); g.stroke();
+        g.fillStyle = "rgba(255,120,40,0.4)"; g.fillRect(cx - 24, y + 6, 48, 2); g.fillStyle = "#0c0706";
+      } else {
+        g.lineWidth = 3; g.beginPath(); g.arc(cx, y + 6, 6, -Math.PI / 2, Math.PI * 0.9); g.stroke();
+      }
+    }
+  }
+
   // ===================== Input =====================
   let sensorLive = false, lastSensorAt = 0, denied = false;
   let tiltRaw = 0, tiltSmooth = 0, tiltOffset = 0, tiltYRaw = 0;
@@ -951,9 +1110,12 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
         if (!here && ball.x > c.x0 && ball.x < c.x1 && Math.abs(ball.y - (y - R)) < 0.2) return { label: "CALL LIFT", run: () => { l.target = y; } };
       }
     }
-    if (dock && !hasJump && Math.abs(ball.x - dock.x) < 0.75 && Math.abs(ball.y - (dock.y - R)) < 0.2) return { label: "FIT MODULE", run: startFit };
+    if (dock && !dockDone() && Math.abs(ball.x - dock.x) < 0.75 && Math.abs(ball.y - (dock.y - R)) < 0.2) return { label: "FIT MODULE", run: startFit };
     return null;
   }
+  // The dock fits the spring (Level 2) or the thruster (Level 3).
+  const dockDone = () => !!dock && (dock.gives === "double" ? hasDouble : hasJump);
+  const doorLocked = (d) => (d.needJump && !hasJump) || (d.needDouble && !hasDouble);
   function useAction() {
     const c = useContext();
     if (!c) return false;
@@ -981,6 +1143,8 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
   const zapWarn = (z, t) => mod(t, z.period) > z.period - 0.45;
   const laserOn = (l, t) => l.always || mod(t + (l.phase || 0), l.period) < l.onFor;
   const laserWarn = (l, t) => !l.always && !laserOn(l, t) && mod(t + (l.phase || 0), l.period) > l.period - 0.4;
+  const ventOn = (v, t) => mod(t + (v.phase || 0), v.period) < v.onFor;
+  const ventWarn = (v, t) => !ventOn(v, t) && mod(t + (v.phase || 0), v.period) > v.period - 0.6;
 
   function dynamicRects() {
     const out = [];
@@ -990,6 +1154,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     }
     for (const d of doors) out.push({ r: [d.x0, d.top, d.x1, d.bottom], obj: d });
     for (const c of crushers) out.push({ r: [c.x0, c.top, c.x1, c.bottom], obj: c });
+    for (const m of movers) out.push({ r: [m.x, m.y, m.x + m.w, m.y + 0.3], obj: m });
     return out;
   }
 
@@ -1029,13 +1194,22 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       l.dy = l.y - py;
     }
     for (const c of crushers) c.bottom = crusherBottom(c, time);
+    // Crane pallets: wait at one end, glide (eased) to the other, wait, glide back.
+    for (const m of movers) {
+      m.t += dt;
+      const D = m.xb - m.xa, dur = D / m.speed, p = mod(m.t, 2 * (m.wait + dur));
+      const u = p < m.wait ? 0 : p < m.wait + dur ? (1 - Math.cos(((p - m.wait) / dur) * Math.PI)) / 2
+        : p < 2 * m.wait + dur ? 1 : (1 + Math.cos(((p - 2 * m.wait - dur) / dur) * Math.PI)) / 2;
+      const nx = m.xa + D * u;
+      m.dx = nx - m.x; m.vx = dt > 0 ? m.dx / dt : 0; m.x = nx;
+    }
     for (const d of doors) {
       let active = false;
       if (d.plate) {
         d.pressed = ball.alive && ball.grounded && ball.x > d.plate.x0 && ball.x < d.plate.x1 && Math.abs(ball.y - (d.plate.y - R)) < 0.15;
         active = d.pressed;
       }
-      if (d.sensor) active = ball.alive && ball.x > d.sensor[0] && ball.x < d.sensor[1] && ball.y > d.top && ball.y < d.closed + 0.5 && (!d.needJump || hasJump);
+      if (d.sensor) active = ball.alive && ball.x > d.sensor[0] && ball.x < d.sensor[1] && ball.y > d.top && ball.y < d.closed + 0.5 && !doorLocked(d);
       if (active) d.timer = d.hold; else d.timer = Math.max(0, d.timer - dt);
       const target = d.timer > 0 ? d.open : d.closed;
       if (d.bottom < target) {
@@ -1052,6 +1226,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     jumpCool = Math.max(0, jumpCool - dt);
     jumpBuf = Math.max(0, jumpBuf - dt);
     if (springFx) { springFx.t += dt; if (springFx.t > 0.3) springFx = null; }
+    if (boostFx) { boostFx.t += dt; if (boostFx.t > 0.4) boostFx = null; }
 
     if (!ball.alive) return;
 
@@ -1060,21 +1235,41 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       fitT += dt;
       ball.x += (dock.x - ball.x) * (1 - Math.exp(-6 * dt));
       ball.vx = ball.vy = 0; ball.omega = 0;
-      if (fitT >= FIT_DUR) { fitT = -1; hasJump = true; jumpCool = 0.3; showToast("A · JUMP"); sfxCheckpoint(); buzz([20, 40, 20]); }
+      if (fitT >= FIT_DUR) {
+        fitT = -1; sfxCheckpoint(); buzz([20, 40, 20]);
+        if (dock.gives === "double") { hasDouble = true; boosts = 1; showToast("A A · DOUBLE JUMP"); }
+        else { hasJump = true; jumpCool = 0.3; showToast("A · JUMP"); }
+      }
       return;
     }
 
-    // Ride the lift.
+    // Ride the lift or the crane pallet.
     if (ball.on && ball.on.isLift) ball.y += ball.on.dy;
+    if (ball.on && ball.on.isMover) ball.x += ball.on.dx;
+    const prevOn = ball.on;
 
     // Spring jump: only straight up, so the arc comes from the speed you already had.
-    if (ball.grounded) airT = 0; else airT += dt;
+    if (ball.grounded) { airT = 0; boosts = 1; } else airT += dt;
+    kickT += dt;
     if (jumpBuf > 0 && hasJump && jumpCool <= 0 && airT <= COYOTE) {
       ball.vy = Math.min(ball.vy, 0) - JUMP_V;
-      jumpBuf = 0; jumpCool = JUMP_COOL; airT = 1;
+      jumpBuf = 0; jumpCool = JUMP_COOL; airT = 1; kickT = 0;
       ball.grounded = false; ball.on = null;
       springFx = { t: 0, x: ball.x, y: ball.y + R };
       sfxJump(); buzz(14);
+    } else if (jumpBuf > 0 && hasDouble && boosts > 0 && airT > COYOTE && kickT > 0.12) {
+      // Thruster: a second straight-up kick in mid-air. It cancels a fall (so it can brake a long drop),
+      // and on the way up it adds only up to a cap, so the highest jump comes from firing near the top.
+      ball.vy = Math.min(ball.vy, Math.max(Math.min(ball.vy, 0) - BOOST_V, -BOOST_V * 1.15));
+      // The nozzles angle with the tilt, so the kick also nudges the ball sideways (handy at a ledge).
+      ball.vx += clamp(input(), -0.9, 0.9) * BOOST_TILT;
+      jumpBuf = 0; boosts = 0; kickT = 0;
+      boostFx = { t: 0, x: ball.x, y: ball.y };
+      for (let i = 0; i < 10; i++) {
+        const a = Math.PI / 2 + (Math.random() - 0.5) * 1.2, sp = 2 + Math.random() * 4;
+        particles.push({ kind: "spark", x: ball.x + (Math.random() - 0.5) * R, y: ball.y + R * 0.8, vx: Math.cos(a) * sp + ball.vx * 0.5, vy: Math.sin(a) * sp, life: 0.25 + Math.random() * 0.25, tint: "cyan" });
+      }
+      sfxBoost(); buzz(10);
     }
 
     const s = input();
@@ -1097,6 +1292,14 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       ball.vy += G * dt; // in the air gravity does the work; sideways speed carries through
       if (LV.airControl) ball.vx += (5 / 7) * G * s * dt * LV.airControl;
     }
+    // Steam vents: a plume that pushes hardest at the grate and fades out toward its top.
+    for (const v of vents) {
+      if (!ventOn(v, time) || ball.x < v.x0 - 0.15 || ball.x > v.x1 + 0.15 || ball.y > v.y || ball.y < v.y - v.h) continue;
+      const u = (v.y - ball.y) / v.h;
+      ball.vy -= GUST * (1 - u) * dt;
+      if (kickT > 0.4) ball.vy *= Math.exp(-GUST_DRAG * dt); // a fresh thruster kick punches through the steam
+      if (!ball.grounded) ball.vx += (5 / 7) * G * s * dt * GUST_CTRL;
+    }
     ball.vx = clamp(ball.vx, -MAX_VX, MAX_VX);
 
     ball.x += ball.vx * dt;
@@ -1112,6 +1315,11 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       }
       for (const d of dyn) { collideRect(d.r, d.obj); if (!ball.alive) return; }
     }
+    // On a crane pallet the ball's speed is kept relative to the pallet: leaving it adds the pallet's speed, landing removes it.
+    if (prevOn !== ball.on) {
+      if (prevOn && prevOn.isMover) ball.vx += prevOn.vx;
+      if (ball.on && ball.on.isMover) ball.vx -= ball.on.vx;
+    }
 
     // Spin: roll without slipping on the ground (relative to a belt), keep spinning in the air.
     if (ball.grounded) ball.omega = (ball.vx * -ball.ny + ball.vy * ball.nx - beltV) / R;
@@ -1121,6 +1329,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     for (const c of crushers) if (circleRectOverlap(ball.x, ball.y, R, [c.x0, c.top, c.x1, c.bottom]) > 0.06) return breakBall("crush");
     for (const z of zaps) if (zapOn(z, time) && ball.x > z.x0 - 0.1 && ball.x < z.x1 + 0.1 && ball.y > z.y - R - 0.08 && ball.y < z.y) return breakBall("zap");
     for (const l of lasers) if (laserOn(l, time) && Math.abs(ball.x - l.x) < R * 0.9 && ball.y + R * 0.9 > l.y0 && ball.y - R * 0.9 < l.y1) return breakBall("laser");
+    for (const m of melts) if (ball.x > m.x0 && ball.x < m.x1 && ball.y + R > m.y + 0.04) return breakBall("melt");
     if (ball.y > PIT_Y) return breakBall("pit");
 
     // Checkpoints and exit.
@@ -1162,7 +1371,8 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 5;
       particles.push({ kind: "shard", x: ball.x, y: ball.y, vx: Math.cos(a) * s + ball.vx * 0.3, vy: Math.sin(a) * s - 2, life: 1.4, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 14, size: 0.05 + Math.random() * 0.08 });
     }
-    sparks(ball.x, ball.y, why === "zap" || why === "laser" ? 30 : 18, why === "zap" ? "blue" : why === "laser" ? "red" : null);
+    sparks(ball.x, ball.y, why === "zap" || why === "laser" || why === "melt" ? 30 : 18, why === "zap" ? "blue" : why === "laser" ? "red" : null);
+    if (why === "melt") for (let i = 0; i < 24; i++) particles.push({ kind: "ember", x: ball.x + (Math.random() - 0.5) * 0.8, y: ball.y, vx: (Math.random() - 0.5) * 2, vy: -1 - Math.random() * 3, life: 0.8 + Math.random() * 1.2 });
   }
   function sparks(x, y, n, tint) {
     for (let i = 0; i < n; i++) {
@@ -1237,6 +1447,29 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       ctx.fillRect(0, midBase - 1, VW, VH - midBase + 1);
       return;
     }
+    if (TH.backdrop === "foundry") {
+      const sky = ctx.createLinearGradient(0, 0, 0, VH);
+      sky.addColorStop(0, "#070404"); sky.addColorStop(0.55, "#120806"); sky.addColorStop(1, "#2a1008");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, VW, VH);
+      const farBase = VH * 0.85 - camY * PX * 0.06;
+      const off1 = mod(camX * PX * 0.1, TILE);
+      for (let x = -off1; x < VW; x += TILE) blit(skyline, x, farBase - skyline.height);
+      // The far pour breathes: a warm glow along the floor of the hall.
+      const pulse = 0.8 + 0.2 * Math.sin(t * 1.7) * Math.sin(t * 0.63 + 1);
+      const gl = ctx.createLinearGradient(0, farBase - VH * 0.35, 0, farBase);
+      gl.addColorStop(0, "rgba(255,110,30,0)"); gl.addColorStop(1, `rgba(255,110,30,${(0.2 * pulse).toFixed(3)})`);
+      ctx.fillStyle = gl;
+      ctx.fillRect(0, farBase - VH * 0.35, VW, VH * 0.35);
+      ctx.fillStyle = "#1c0b06";
+      ctx.fillRect(0, farBase, VW, VH - farBase);
+      const midBase = VH * 0.95 - camY * PX * 0.14;
+      const off2 = mod(camX * PX * 0.3, TILE);
+      for (let x = -off2; x < VW; x += TILE) blit(midline, x, midBase - midline.height);
+      ctx.fillStyle = "#0c0706";
+      ctx.fillRect(0, midBase - 1, VW, VH - midBase + 1);
+      return;
+    }
     // Indoors: the city is seen through the wall's windows.
     const sky = ctx.createLinearGradient(0, 0, 0, VH);
     sky.addColorStop(0, "#03060d"); sky.addColorStop(1, "#0b1222");
@@ -1288,6 +1521,15 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     if (TH.edge === "tread") {
       g.strokeStyle = "rgba(0,0,0,0.45)"; g.lineWidth = 1;
       for (let x = Math.ceil(s.x0 / 2) * 2; x < s.x1; x += 2) { g.beginPath(); g.moveTo(sx(x), top); g.lineTo(sx(x), bot); g.stroke(); }
+    } else if (TH.edge === "cast") {
+      // Cast-iron blocks: wide seams, and the face nearest the top warmed by the heat.
+      g.strokeStyle = "rgba(0,0,0,0.45)"; g.lineWidth = 1;
+      for (let x = Math.ceil(s.x0 / 2.5) * 2.5; x < s.x1; x += 2.5) { g.beginPath(); g.moveTo(sx(x), top); g.lineTo(sx(x), bot); g.stroke(); }
+      if (s.style !== "ceil") {
+        const heat = g.createLinearGradient(0, top, 0, top + 0.7 * PX);
+        heat.addColorStop(0, "rgba(255,120,50,0.12)"); heat.addColorStop(1, "rgba(255,120,50,0)");
+        g.fillStyle = heat; g.fillRect(sx(s.x0), top, (s.x1 - s.x0) * PX, 0.7 * PX);
+      }
     } else {
       g.strokeStyle = "rgba(0,0,0,0.3)"; g.lineWidth = 1;
       for (let x = Math.ceil(s.x0 / 3) * 3; x < s.x1; x += 3) { g.beginPath(); g.moveTo(sx(x), top); g.lineTo(sx(x), bot); g.stroke(); }
@@ -1322,6 +1564,20 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
         for (let d = 0.25; d < len; d += 0.5) {
           const x = e.ax + ux * d - e.nx * 0.26, y = e.ay + uy * d - e.ny * 0.26;
           g.beginPath(); g.arc(sx(x), sy(y), Math.max(1, 0.03 * PX), 0, 6.283); g.fill();
+        }
+      } else if (TH.edge === "cast") {
+        // Cast deck: an iron band, a heat-lit lip and bolt heads.
+        g.fillStyle = "#4a3c34";
+        g.beginPath();
+        g.moveTo(sx(e.ax), sy(e.ay)); g.lineTo(sx(e.bx), sy(e.by));
+        g.lineTo(sx(e.bx - e.nx * 0.14), sy(e.by - e.ny * 0.14)); g.lineTo(sx(e.ax - e.nx * 0.14), sy(e.ay - e.ny * 0.14));
+        g.closePath(); g.fill();
+        g.strokeStyle = "#c08a62"; g.lineWidth = lw;
+        g.beginPath(); g.moveTo(sx(e.ax), sy(e.ay)); g.lineTo(sx(e.bx), sy(e.by)); g.stroke();
+        g.fillStyle = "#6b5549";
+        for (let d = 0.3; d < len; d += 0.6) {
+          const x = e.ax + ux * d - e.nx * 0.07, y = e.ay + uy * d - e.ny * 0.07;
+          g.beginPath(); g.arc(sx(x), sy(y), Math.max(1, 0.035 * PX), 0, 6.283); g.fill();
         }
       } else {
         // Polished deck: a bright lip, a soft sheen, and an LED strip in the face.
@@ -1410,6 +1666,28 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       g.fillStyle = "rgba(200,255,230,0.18)"; g.fillRect(x0, y0 + 0.18 * PX, w, h - 0.36 * PX);
       g.fillStyle = "rgba(255,255,255,0.6)";
       for (let k = 0; k < 4; k++) { const by = mod(t * 0.5 + k * 0.27, 1); g.beginPath(); g.arc(x0 + w * (0.3 + 0.12 * k), y0 + h * (0.95 - by * (0.95 - lv)), 0.03 * PX, 0, 6.283); g.fill(); }
+    } else if (d.k === "furnace") {
+      if (!onScreenX(d.x - d.w / 2, d.x + d.w / 2, 4)) return;
+      const x0 = X(d.x - d.w / 2), y0 = Y(d.y - d.h), w = d.w * PX, h = d.h * PX;
+      // Chimney, then a brick body with a tapered shoulder.
+      g.fillStyle = "#241915"; g.fillRect(x0 + w * 0.38, y0 - h * 0.7, w * 0.24, h * 0.7);
+      g.fillStyle = "#2e211c";
+      g.beginPath(); g.moveTo(x0, y0 + h); g.lineTo(x0, y0 + h * 0.28); g.lineTo(x0 + w * 0.2, y0); g.lineTo(x0 + w * 0.8, y0); g.lineTo(x0 + w, y0 + h * 0.28); g.lineTo(x0 + w, y0 + h); g.closePath(); g.fill();
+      g.strokeStyle = "rgba(0,0,0,0.35)"; g.lineWidth = 1;
+      g.beginPath();
+      for (let yy = y0 + h * 0.3, row = 0; yy < y0 + h; yy += 0.25 * PX, row++) {
+        g.moveTo(x0, yy); g.lineTo(x0 + w, yy);
+        for (let xx = x0 + (row % 2 ? 0.25 : 0.5) * PX; xx < x0 + w; xx += 0.5 * PX) { g.moveTo(xx, yy); g.lineTo(xx, Math.min(y0 + h, yy + 0.25 * PX)); }
+      }
+      g.stroke();
+      // The mouth: an arch full of fire that flickers.
+      const mx = X(d.x), mTop = Y(d.y - d.h * 0.55), mBot = Y(d.y - d.h * 0.12), mw = w * 0.22;
+      const f = 0.85 + 0.15 * Math.sin(t * 13 + d.x) * Math.sin(t * 5.1);
+      const fire = g.createLinearGradient(0, mTop, 0, mBot);
+      fire.addColorStop(0, `rgba(255,120,40,${f})`); fire.addColorStop(0.6, `rgba(255,190,90,${f})`); fire.addColorStop(1, "#fff1c4");
+      g.fillStyle = fire;
+      g.beginPath(); g.moveTo(mx - mw, mBot); g.lineTo(mx - mw, mTop + mw); g.arc(mx, mTop + mw, mw, Math.PI, 0); g.lineTo(mx + mw, mBot); g.closePath(); g.fill();
+      g.fillStyle = "#1a110e"; g.fillRect(mx - mw * 1.3, mBot, mw * 2.6, 0.1 * PX);
     } else if (d.k === "labfloor") {
       if (!onScreenX(d.x0, d.x1, 4)) return;
       g.fillStyle = "#a9b6c3"; g.fillRect(X(d.x0), Y(d.y), (d.x1 - d.x0) * PX, 0.12 * PX);
@@ -1453,7 +1731,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     // Cradle on the floor.
     g.fillStyle = "#2a3440";
     g.beginPath(); g.ellipse(sx(x), sy(f), 0.6 * PX, 0.12 * PX, 0, 0, Math.PI); g.fill();
-    g.fillStyle = hasJump ? "#3a4654" : "rgba(80,230,255,0.85)";
+    g.fillStyle = dockDone() ? "#3a4654" : "rgba(80,230,255,0.85)";
     g.fillRect(sx(x - 0.5), sy(f) - 0.03 * PX, PX, 0.05 * PX);
     // Capsule holding the module, and the arms that fit it.
     const cy = f - 1.75;
@@ -1461,9 +1739,9 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     g.fillRect(sx(x - 0.32), sy(cy - 0.45), 0.64 * PX, 0.9 * PX);
     g.strokeStyle = "rgba(200,240,255,0.6)"; g.lineWidth = Math.max(1, 0.03 * PX);
     g.strokeRect(sx(x - 0.32), sy(cy - 0.45), 0.64 * PX, 0.9 * PX);
-    const p = fitT >= 0 ? clamp(fitT / FIT_DUR, 0, 1) : hasJump ? 1 : 0;
+    const p = fitT >= 0 ? clamp(fitT / FIT_DUR, 0, 1) : dockDone() ? 1 : 0;
     const drop = p < 0.15 ? 0 : p < 0.5 ? (p - 0.15) / 0.35 : 1;
-    if (p < 0.55) drawModule(g, sx(x), sy(lerp(cy, f - R, drop)), 0.22 * PX, t, 1);
+    if (p < 0.55) (dock.gives === "double" ? drawBooster : drawModule)(g, sx(x), sy(lerp(cy, f - R, drop)), 0.22 * PX, t, 1);
     const reach = fitT >= 0 ? Math.sin(Math.min(1, fitT / FIT_DUR) * Math.PI) : 0;
     g.strokeStyle = "#8b97a6"; g.lineWidth = Math.max(1.5, 0.06 * PX);
     for (const side of [-1, 1]) {
@@ -1488,6 +1766,25 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     g.strokeStyle = "rgba(80,230,255,0.95)"; g.lineWidth = Math.max(1, s * 0.1);
     g.beginPath(); g.ellipse(X, Y - s * 0.2, s * 0.6 * Math.max(0.12, spin), s * 0.6, 0, 0, 6.283); g.stroke();
     g.fillStyle = "#e8f6ff"; g.beginPath(); g.arc(X, Y - s * 0.2, s * 0.16, 0, 6.283); g.fill();
+    g.restore();
+  }
+
+  // The thruster module: a gas canister on a collar with two nozzles and pilot flames.
+  function drawBooster(g, X, Y, s, t, alpha) {
+    g.save();
+    g.globalAlpha = alpha;
+    g.strokeStyle = "#cfd8e2"; g.lineWidth = Math.max(1, s * 0.14);
+    g.beginPath(); g.arc(X, Y + s * 0.1, s * 0.6, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
+    for (const side of [-1, 1]) {
+      const nx = X + side * s * 0.52, ny = Y + s * 0.3;
+      g.fillStyle = "#56616f";
+      g.beginPath(); g.moveTo(nx - s * 0.15, ny - s * 0.25); g.lineTo(nx + s * 0.15, ny - s * 0.25); g.lineTo(nx + s * 0.22, ny + s * 0.25); g.lineTo(nx - s * 0.22, ny + s * 0.25); g.closePath(); g.fill();
+      const f = 0.6 + 0.4 * Math.abs(Math.sin(t * 17 + side));
+      g.fillStyle = `rgba(110,240,255,${0.85 * f})`;
+      g.beginPath(); g.arc(nx, ny + s * 0.36, s * 0.1 * f + 1, 0, 6.283); g.fill();
+    }
+    g.fillStyle = "#e8f6ff"; g.fillRect(X - s * 0.15, Y - s * 0.35, s * 0.3, s * 0.62);
+    g.fillStyle = "#3ee6ff"; g.fillRect(X - s * 0.15, Y - s * 0.08, s * 0.3, s * 0.09);
     g.restore();
   }
 
@@ -1580,6 +1877,14 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     for (const d of LV.decor || []) if (d.k === "labfloor") drawDecor(g, d, t);
     for (const st of LV.stripes || []) if (onScreenX(st[0], st[2], 4)) hazardStripes(g, ...st);
 
+    // Steam vent grates: they glow and hiss just before the plume comes.
+    for (const v of vents) {
+      if (!onScreenX(v.x0 - 1, v.x1 + 1, 4)) continue;
+      const on = ventOn(v, t), warn = ventWarn(v, t);
+      g.fillStyle = "#1a1210"; g.fillRect(sx(v.x0), sy(v.y) - 0.06 * PX, (v.x1 - v.x0) * PX, 0.14 * PX);
+      g.fillStyle = on ? "#ffb066" : warn && Math.sin(t * 40) > 0 ? "#a85a26" : "#3a2a22";
+      for (let x = v.x0 + 0.12; x < v.x1 - 0.1; x += 0.3) g.fillRect(sx(x), sy(v.y) - 0.04 * PX, 0.13 * PX, 0.09 * PX);
+    }
     // Conveyor belts with moving chevrons.
     for (const cv of conveyors) {
       if (!onScreenX(cv.x0, cv.x1, 4)) continue;
@@ -1634,7 +1939,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
         g.fillRect(sx(d.x0), sy(d.top), (d.x1 - d.x0) * PX, (d.bottom - d.top) * PX);
         hazardStripes(g, d.x0, d.bottom - 0.25, d.x1, d.bottom);
       }
-      const locked = d.needJump && !hasJump;
+      const locked = doorLocked(d);
       g.fillStyle = locked ? "#ff3b30" : d.timer > 0 ? "#7dff9a" : d.sensor ? "#5fd7ff" : "#ff3b30";
       g.beginPath(); g.arc(sx(d.light[0]), sy(d.light[1]), 0.07 * PX, 0, 6.283); g.fill();
     }
@@ -1643,6 +1948,19 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     for (const c of crushers) {
       if (!onScreenX(c.x0 - 1, c.x1 + 1, 4)) continue;
       const mid = (c.x0 + c.x1) / 2;
+      if (TH.edge === "cast") {
+        // Forge hammer: a heavy ram with a red-hot face.
+        g.fillStyle = "#2a201b";
+        g.fillRect(sx(mid - 0.16), sy(c.top), 0.32 * PX, (c.bottom - 0.6 - c.top) * PX);
+        g.fillStyle = "#4a3a31";
+        g.fillRect(sx(c.x0 - 0.08), sy(c.bottom - 0.6), (c.x1 - c.x0 + 0.16) * PX, 0.3 * PX);
+        g.fillRect(sx(c.x0), sy(c.bottom - 0.3), (c.x1 - c.x0) * PX, 0.3 * PX);
+        hazardStripes(g, c.x0 - 0.08, c.bottom - 0.6, c.x1 + 0.08, c.bottom - 0.5);
+        const hot = g.createLinearGradient(0, sy(c.bottom - 0.16), 0, sy(c.bottom));
+        hot.addColorStop(0, "#7a2a12"); hot.addColorStop(1, crusherWarn(c, t) ? "#ffd27a" : "#ff8a3a");
+        g.fillStyle = hot; g.fillRect(sx(c.x0), sy(c.bottom - 0.16), (c.x1 - c.x0) * PX, 0.16 * PX);
+        continue;
+      }
       g.fillStyle = TH.edge === "tread" ? "#1a1f27" : "#3a4552";
       g.fillRect(sx(mid - 0.12), sy(c.top), 0.24 * PX, (c.bottom - 0.5 - c.top) * PX);
       g.fillStyle = TH.edge === "tread" ? "#343c48" : "#5a6676";
@@ -1651,6 +1969,27 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     }
 
     for (const l of lifts) drawLiftCar(g, l);
+
+    // Crane: overhead rail, trolley, a hook block with a work lamp, and the slung pallet.
+    for (const m of movers) {
+      if (!onScreenX(m.xa - 1, m.xb + m.w + 1, 4)) continue;
+      g.fillStyle = "#1d1512";
+      g.fillRect(sx(m.xa - 0.6), sy(m.rail) - 0.12 * PX, (m.xb + m.w - m.xa + 1.2) * PX, 0.24 * PX);
+      const cx = m.x + m.w / 2, hook = m.y - 1.9;
+      g.fillStyle = "#3a2e28"; g.fillRect(sx(cx - 0.5), sy(m.rail) + 0.12 * PX, PX, 0.34 * PX);
+      g.fillStyle = "#14100e";
+      for (const wx of [cx - 0.3, cx + 0.3]) { g.beginPath(); g.arc(sx(wx), sy(m.rail) + 0.08 * PX, 0.1 * PX, 0, 6.283); g.fill(); }
+      g.strokeStyle = "#2a201b"; g.lineWidth = Math.max(1, 0.04 * PX);
+      g.beginPath();
+      g.moveTo(sx(cx), sy(m.rail + 0.46)); g.lineTo(sx(cx), sy(hook));
+      g.moveTo(sx(cx), sy(hook)); g.lineTo(sx(m.x + 0.12), sy(m.y));
+      g.moveTo(sx(cx), sy(hook)); g.lineTo(sx(m.x + m.w - 0.12), sy(m.y));
+      g.stroke();
+      g.fillStyle = "#c99a1d"; g.fillRect(sx(cx - 0.16), sy(hook - 0.3), 0.32 * PX, 0.3 * PX);
+      g.fillStyle = "#4b3d35"; g.fillRect(sx(m.x), sy(m.y), m.w * PX, 0.3 * PX);
+      g.fillStyle = "#c08a62"; g.fillRect(sx(m.x), sy(m.y), m.w * PX, Math.max(1, 0.035 * PX));
+      hazardStripes(g, m.x, m.y + 0.18, m.x + m.w, m.y + 0.3);
+    }
 
     // Beacons.
     for (const b of LV.beacons || []) {
@@ -1737,7 +2076,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       if (split > 0) {
         g.fillStyle = `rgba(80,230,255,${0.35 * split})`;
         g.beginPath(); g.arc(X, Y, r * 0.72, 0, 6.283); g.fill();
-        if (p > 0.45) drawModule(g, X, Y + r * 0.05, r * 0.42, t, clamp((p - 0.45) * 5, 0, 1) * split);
+        if (p > 0.45) (dock && dock.gives === "double" ? drawBooster : drawModule)(g, X, Y + r * 0.05, r * 0.42, t, clamp((p - 0.45) * 5, 0, 1) * split);
       }
       const capR = r * (0.64 - 0.2 * split);
       const cap = g.createRadialGradient(X - capR * 0.3, Y - capR * 0.35, capR * 0.05, X, Y, capR);
@@ -1763,6 +2102,16 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       g.globalAlpha = clamp(pop * 1.2, 0, 1);
       g.fillStyle = jumpCool > 0 ? "#ffa21a" : "#7dff9a";
       g.beginPath(); g.arc(X + capR * 0.38, Y + capR * 0.62, Math.max(1, r * 0.06), 0, 6.283); g.fill();
+      // Thruster nozzles on the level part, lit while the mid-air kick is ready.
+      if (hasDouble) {
+        for (const side of [-1, 1]) {
+          const a = Math.PI / 2 + side * 0.8, px = X + Math.cos(a) * r * 0.84, py = Y + Math.sin(a) * r * 0.84;
+          g.fillStyle = "#56616f";
+          g.beginPath(); g.arc(px, py, Math.max(1.5, r * 0.15), 0, 6.283); g.fill();
+          g.fillStyle = boosts > 0 ? "#6ef0ff" : "#24414a";
+          g.beginPath(); g.arc(px, py, Math.max(1, r * 0.08), 0, 6.283); g.fill();
+        }
+      }
     }
     const danger = dangerNow;
     g.fillStyle = danger === 2 ? "#ff3b30" : danger === 1 ? "#ffa21a" : "#7dff9a";
@@ -1774,8 +2123,12 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
 
   function drawParticles(g, additive) {
     for (const p of particles) {
-      if ((p.kind === "spark") !== additive) continue;
-      if (p.kind === "shard") {
+      if ((p.kind !== "shard") !== additive) continue;
+      if (p.kind === "ember") {
+        const a = clamp(p.life, 0, 1), s = Math.max(1.5, 0.045 * PX);
+        g.fillStyle = `rgba(255,${150 + Math.round(70 * a)},70,${a})`;
+        g.fillRect(sx(p.x) - s / 2, sy(p.y) - s / 2, s, s);
+      } else if (p.kind === "shard") {
         g.save();
         g.translate(sx(p.x), sy(p.y)); g.rotate(p.rot);
         g.fillStyle = `rgba(190,40,45,${clamp(p.life, 0, 1)})`;
@@ -1791,7 +2144,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     }
   }
 
-  const AMBER = [255, 176, 86], COOL = [205, 225, 255], TUBE = [215, 232, 255];
+  const AMBER = [255, 176, 86], COOL = [205, 225, 255], TUBE = [215, 232, 255], HOT = [255, 112, 40];
   function lights(t) {
     const out = [];
     for (const L of LV.lamps || []) {
@@ -1799,16 +2152,21 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       if (L.flicker) { const f = Math.sin(t * 23) * Math.sin(t * 7.3 + 1) * Math.sin(t * 1.7); if (f > 0.35) i = 0.25; }
       out.push({ x: L.x + 0.58, y: L.y - L.h + 0.2, r: 5.5, i, c: AMBER, cone: L.y });
     }
-    for (const L of LV.hanging || []) out.push({ x: L.x, y: L.y + L.len + 0.25, r: 4.6, i: 0.9, c: COOL, cone: L.y + L.len + 3.4 });
+    for (const L of LV.hanging || []) out.push({ x: L.x, y: L.y + L.len + 0.25, r: 4.6, i: 0.9, c: L.warm ? AMBER : COOL, cone: L.y + L.len + 3.4 });
+    for (const m of melts) for (let x = m.x0 + 0.8; x < m.x1; x += 2.4) out.push({ x, y: m.y - 0.15, r: 3.4, i: 0.85, c: HOT, noBulb: true });
+    for (const v of vents) if (ventOn(v, t)) out.push({ x: (v.x0 + v.x1) / 2, y: v.y - 0.4, r: 2.6, i: 0.5, c: [255, 196, 140], noBulb: true });
+    for (const m of movers) out.push({ x: m.x + m.w / 2, y: m.y - 1.75, r: 3.4, i: 0.8, c: AMBER, cone: m.y });
+    for (const d of LV.decor || []) if (d.k === "furnace") out.push({ x: d.x, y: d.y - d.h * 0.3, r: 4.2, i: 0.8 + 0.15 * Math.sin(t * 13 + d.x) * Math.sin(t * 5.1), c: HOT, noBulb: true });
+    if (TH.edge === "cast") for (const c of crushers) out.push({ x: (c.x0 + c.x1) / 2, y: c.bottom - 0.05, r: 1.8, i: 0.6, c: HOT, noBulb: true });
     for (const L of LV.tubes || []) out.push({ x: L.x, y: L.y + 0.3, r: L.r || 6.2, i: L.i || 0.9, c: TUBE, cone: L.f, wide: true });
     for (const b of LV.beacons || []) if (Math.sin(t * 6 + b.x) > 0) out.push({ x: b.x, y: b.y - 0.2, r: 2.2, i: 0.6, c: [255, 162, 26] });
     for (const z of zaps) if (zapOn(z, t)) out.push({ x: (z.x0 + z.x1) / 2, y: z.y - 0.2, r: 3.5, i: 0.85, c: [140, 210, 255] });
     for (const l of lasers) if (laserOn(l, t)) out.push({ x: l.x, y: (l.y0 + l.y1) / 2, r: 1.4 + (l.y1 - l.y0) * 0.3, i: 0.7, c: [255, 50, 70], noBulb: true });
     for (const l of lifts) out.push({ x: (l.x0 + l.x1) / 2, y: l.y - 2.1, r: 3, i: 0.7, c: COOL });
     for (const c of crushers) if (crusherWarn(c, t)) out.push({ x: (c.x0 + c.x1) / 2, y: c.top + 0.3, r: 2.4, i: 0.8, c: [255, 60, 48] });
-    for (const d of doors) out.push({ x: d.light[0], y: d.light[1], r: 1.6, i: 0.6, c: (d.needJump && !hasJump) ? [255, 59, 48] : d.timer > 0 ? [125, 255, 154] : d.sensor ? [95, 215, 255] : [255, 59, 48] });
+    for (const d of doors) out.push({ x: d.light[0], y: d.light[1], r: 1.6, i: 0.6, c: doorLocked(d) ? [255, 59, 48] : d.timer > 0 ? [125, 255, 154] : d.sensor ? [95, 215, 255] : [255, 59, 48] });
     for (const m of LV.decor || []) if (m.k === "monitor") out.push({ x: m.x, y: m.y, r: 2.2, i: 0.55, c: [90, 220, 255], noBulb: true });
-    if (dock) out.push({ x: dock.x, y: dock.y - 1.75, r: 2.8, i: hasJump ? 0.35 : 0.9, c: [80, 230, 255] });
+    if (dock) out.push({ x: dock.x, y: dock.y - 1.75, r: 2.8, i: dockDone() ? 0.35 : 0.9, c: [80, 230, 255] });
     CHECKPOINTS.forEach((c, i) => { if (i > 0 && i <= cpIndex) out.push({ x: c.x + 0.6, y: c.y - 1.15, r: 1.8, i: 0.6, c: [125, 255, 154] }); });
     out.push({ x: LV.exit.x0 + 1.1, y: LV.exit.floor - 3.7, r: 4.5, i: 0.9, c: [93, 255, 143] });
     if (ball.alive) out.push({ x: ball.x, y: ball.y, r: 1.5, i: 0.55, c: [255, 120, 110], noBulb: true });
@@ -1897,8 +2255,50 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       ctx.beginPath(); ctx.moveTo(X - 0.15 * PX, top); ctx.lineTo(X + 0.15 * PX, top); ctx.lineTo(X + 0.45 * PX, bot); ctx.lineTo(X - 0.45 * PX, bot); ctx.closePath(); ctx.fill();
       if (Math.random() < 0.3) sparks(ball.x + (Math.random() - 0.5) * 0.5, ball.y, 1, "cyan");
     }
+    // Thruster puff: a ring blown out under the ball.
+    if (boostFx) {
+      const k = boostFx.t / 0.4, X = sx(boostFx.x), Y = sy(boostFx.y + R * 0.9);
+      ctx.strokeStyle = `rgba(110,240,255,${(0.8 * (1 - k)).toFixed(3)})`; ctx.lineWidth = Math.max(1.5, 0.06 * PX * (1 - k));
+      ctx.beginPath(); ctx.ellipse(X, Y + k * 0.3 * PX, (0.25 + k * 0.9) * PX, (0.07 + k * 0.2) * PX, 0, 0, 6.283); ctx.stroke();
+    }
     drawParticles(ctx, true);
     ctx.restore();
+  }
+
+  // Self-lit things drawn over the darkness: molten metal and the steam plumes.
+  function drawHot(t) {
+    for (const m of melts) {
+      if (!onScreenX(m.x0, m.x1, 4)) continue;
+      const top = sy(m.y), bot = sy(m.y + (m.d || 2.2)), x0 = sx(m.x0), w = (m.x1 - m.x0) * PX;
+      const gr = ctx.createLinearGradient(0, top, 0, bot);
+      gr.addColorStop(0, "#ffd27a"); gr.addColorStop(0.08, "#ff8a2a"); gr.addColorStop(0.45, "#b8321a"); gr.addColorStop(1, "#3a0c05");
+      ctx.fillStyle = gr;
+      ctx.beginPath();
+      ctx.moveTo(x0, bot);
+      for (let x = m.x0; x <= m.x1 + 0.01; x += 0.25) ctx.lineTo(sx(Math.min(x, m.x1)), top + Math.sin(x * 2.3 + t * 2.1) * 0.035 * PX + Math.sin(x * 5.1 - t * 1.3) * 0.02 * PX);
+      ctx.lineTo(x0 + w, bot);
+      ctx.closePath(); ctx.fill();
+      // Dark crust drifting on the surface.
+      ctx.fillStyle = "rgba(70,20,8,0.55)";
+      for (let i = 0; i < (m.x1 - m.x0) / 1.4; i++) {
+        const cx = m.x0 + mod(i * 1.37 + t * 0.18 * (i % 2 ? 1 : -0.7), m.x1 - m.x0);
+        ctx.beginPath(); ctx.ellipse(sx(cx), top + 0.05 * PX, (0.18 + (i % 3) * 0.08) * PX, 0.035 * PX, 0, 0, 6.283); ctx.fill();
+      }
+    }
+    for (const v of vents) {
+      if (!onScreenX(v.x0 - 1, v.x1 + 1, 6)) continue;
+      const on = ventOn(v, t), warn = ventWarn(v, t);
+      if (!on && !warn) continue;
+      const cx = (v.x0 + v.x1) / 2, half = (v.x1 - v.x0) / 2, N = on ? 24 : 5;
+      for (let k = 0; k < N; k++) {
+        const ph = mod(t * (on ? 0.55 : 0.9) + k / N, 1), y = v.y - ph * (on ? v.h * 0.9 : 0.8);
+        const x = cx + Math.sin(k * 12.9 + t * 1.3) * half * (0.45 + ph * 0.6);
+        const rad = (0.45 + ph * (on ? 1.1 : 0.3)) * PX, a = (on ? 0.22 : 0.09) * (1 - ph) * Math.min(1, ph * 6);
+        const pg = ctx.createRadialGradient(sx(x), sy(y), 0, sx(x), sy(y), rad);
+        pg.addColorStop(0, `rgba(235,220,205,${a.toFixed(3)})`); pg.addColorStop(1, "rgba(235,220,205,0)");
+        ctx.fillStyle = pg; ctx.fillRect(sx(x) - rad, sy(y) - rad, rad * 2, rad * 2);
+      }
+    }
   }
 
   // ===================== Loop =====================
@@ -1912,7 +2312,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     dangerNow = fallDanger();
     if (!powered) { updateGlare(dt, now); requestAnimationFrame(frame); return; }
 
-    if (started && !finished && !paused) {
+    if (started && !finished && !paused && !simMode) {
       time += dt;
       acc += dt;
       while (acc >= STEP) { step(STEP); acc -= STEP; }
@@ -1921,11 +2321,17 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     }
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
-      p.vy += G * dt * (p.kind === "spark" ? 0.6 : 1);
+      p.vy += G * dt * (p.kind === "spark" ? 0.6 : p.kind === "ember" ? -0.02 : 1);
       p.x += p.vx * dt; p.y += p.vy * dt;
       if (p.rot !== undefined) p.rot += p.vr * dt;
       p.life -= dt;
       if (p.life <= 0) particles.splice(i, 1);
+    }
+    // Embers drift up off the molten metal.
+    if (started && particles.length < 160) {
+      for (const m of melts) if (onScreenX(m.x0, m.x1) && Math.random() < dt * 1.8 * (m.x1 - m.x0)) {
+        particles.push({ kind: "ember", x: m.x0 + Math.random() * (m.x1 - m.x0), y: m.y - 0.05, vx: (Math.random() - 0.5) * 0.4, vy: -0.6 - Math.random() * 1.4, life: 1 + Math.random() * 1.6 });
+      }
     }
 
     // Camera: lead in the direction of travel, keep a little more room below.
@@ -1940,6 +2346,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     applyLighting(L);
     ctx.drawImage(wcv, 0, 0, VW, VH);
     drawGlows(L);
+    drawHot(time);
     applyBloom();
     // Round the screen corners in the drawing itself (cheaper than clipping the canvas layer).
     ctx.save();
@@ -1954,6 +2361,9 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       $("speed").textContent = Math.hypot(ball.vx, ball.vy).toFixed(1);
       if (cpIndex !== pipsShown) { pipsShown = cpIndex; $("pips").innerHTML = CHECKPOINTS.map((_, i) => '<i class="' + (i <= cpIndex ? "on" : "") + '"></i>').join(""); }
       $("jumpIco").className = "jump-ico " + (hasJump ? (jumpCool > 0 ? "charge" : "ready") : "lock");
+      const bIco = $("boostIco"), showB = hasDouble || (!!dock && dock.gives === "double");
+      bIco.hidden = !showB;
+      if (showB) bIco.className = "boost-ico " + (hasDouble ? (boosts > 0 ? "ready" : "used") : "lock");
       const c = started && !finished && !panel ? useContext() : null;
       const pr = $("prompt");
       if (c) { pr.hidden = false; pr.textContent = "A · " + c.label; } else pr.hidden = true;
@@ -2439,8 +2849,10 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     for (let i = 0; i < 6; i++) tone(900 + i * 140, 0.6 + i * 0.22, 0.06, "square", 0.03);
     tone(1046.5, 2.2, 0.12, "square", 0.04); tone(1568, 2.32, 0.3, "square", 0.04);
   }
+  function sfxBoost() { tone(260, 0, 0.16, "sawtooth", 0.03, 120); tone(700, 0, 0.12, "triangle", 0.035, 1500); }
   function sfxBreak(why) {
     if (why === "retry") { tone(440, 0, 0.12, "square", 0.03); return; }
+    if (why === "melt") { tone(900, 0, 0.35, "sawtooth", 0.03, 110); tone(140, 0.05, 0.4, "square", 0.04); return; }
     tone(220, 0, 0.09, "sawtooth", 0.06); tone(130, 0.05, 0.35, "sawtooth", 0.06); tone(70, 0.12, 0.4, "square", 0.04);
   }
 
@@ -2540,6 +2952,19 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       zapOn: () => (zaps[0] ? zapOn(zaps[0], time) : false), laserOn: (i) => laserOn(lasers[i], time),
       useContext: () => { const c = useContext(); return c ? c.label : null; }, danger: fallDanger,
       selectLevel: (i) => { libIdx = i; },
+      get hasDouble() { return hasDouble; }, get boosts() { return boosts; }, get movers() { return movers; }, get vents() { return vents; },
+      ventOn: (i) => ventOn(vents[i], time), crusherBottom: (i) => crusherBottom(crushers[i], time), crusherWarn: (i) => crusherWarn(crushers[i], time),
+      // Bot support: freeze the real-time loop and run the physics in fast, fixed steps.
+      sim(on) { simMode = on; acc = 0; },
+      start(i) { libIdx = i; begin(); },
+      setPad(d) { padDir = d; },
+      tick(sec) {
+        for (let n = Math.round(sec / STEP); n > 0 && !finished; n--) {
+          time += STEP; step(STEP);
+          if (!ball.alive) { ball.deadT += STEP; if (ball.deadT > 1.3) spawn(); }
+          if (ball.spawnT > 0) ball.spawnT = Math.max(0, ball.spawnT - STEP);
+        }
+      },
     };
   }
 
