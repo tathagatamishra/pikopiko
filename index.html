@@ -842,6 +842,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
   const cvs = $("scene"), ctx = cvs.getContext("2d");
   const wcv = document.createElement("canvas"), wctx = wcv.getContext("2d");
   const lcv = document.createElement("canvas"), lctx = lcv.getContext("2d");
+  const gcv = document.createElement("canvas"), gctx = gcv.getContext("2d");
   let VW = 0, VH = 0, DPR = 1, PX = 46, camX = 2, camY = -2, maxDPR = 1.5;
   let skyline = null, midline = null, skyTower = null, wallTile = null;
   const TILE = 2048;
@@ -854,19 +855,36 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       c.width = Math.round(VW * DPR); c.height = Math.round(VH * DPR);
       g.setTransform(DPR, 0, 0, DPR, 0, 0);
     }
-    // Lighting is soft, so it renders at half resolution and is scaled up.
-    lcv.width = Math.round(VW * DPR * 0.5); lcv.height = Math.round(VH * DPR * 0.5);
-    lctx.setTransform(DPR * 0.5, 0, 0, DPR * 0.5, 0, 0);
+    // Lighting and the soft glow layer are soft, so they render at half resolution and are scaled up.
+    for (const [c, g] of [[lcv, lctx], [gcv, gctx]]) {
+      c.width = Math.round(VW * DPR * 0.5); c.height = Math.round(VH * DPR * 0.5);
+      g.setTransform(DPR * 0.5, 0, 0, DPR * 0.5, 0, 0);
+    }
     PX = Math.min(VW, VH) / 9.5;
     buildBackdrop();
   }
   const sx = (x) => (x - camX) * PX + VW / 2;
   const sy = (y) => (y - camY) * PX + VH / 2;
 
+  // The sky gradient is baked into the far tile (which is then opaque), so it isn't repainted every frame.
+  // `base` is where the tile's bottom sits on screen, as a share of the screen height.
+  const SKIES = {
+    yard: [0.8, [[0, "#020309"], [0.6, "#070b18"], [1, "#15110f"]]],
+    factory: [0.74, [[0, "#03060d"], [1, "#0b1222"]]],
+    foundry: [0.85, [[0, "#070404"], [0.55, "#120806"], [1, "#2a1008"]]],
+  };
+  function paintSky(g, h) {
+    const [base, stops] = SKIES[TH.backdrop];
+    const gr = g.createLinearGradient(0, h - base * VH, 0, h + (1 - base) * VH);
+    for (const [o, c] of stops) gr.addColorStop(o, c);
+    g.fillStyle = gr; g.fillRect(0, 0, TILE, h);
+  }
+
   function buildSkyline(h, windowsRate) {
     const c = document.createElement("canvas");
     c.width = TILE; c.height = h;
     const g = c.getContext("2d");
+    paintSky(g, h);
     const R1 = rnd(11);
     let x = 0;
     skyTower = null;
@@ -986,6 +1004,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     skyline = document.createElement("canvas");
     skyline.width = TILE; skyline.height = h;
     let g = skyline.getContext("2d");
+    paintSky(g, h);
     const R1 = rnd(73), k = h / 420;
     let x = 0;
     while (x < TILE) {
@@ -1423,11 +1442,8 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
 
   function drawBackdrop(t) {
     if (TH.backdrop === "yard") {
-      const sky = ctx.createLinearGradient(0, 0, 0, VH);
-      sky.addColorStop(0, "#020309"); sky.addColorStop(0.6, "#070b18"); sky.addColorStop(1, "#15110f");
-      ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, VW, VH);
       const farBase = VH * 0.8 - camY * PX * 0.05;
+      if (farBase > skyline.height) { ctx.fillStyle = "#020309"; ctx.fillRect(0, 0, VW, farBase - skyline.height + 1); }
       const off1 = mod(camX * PX * 0.1, TILE);
       for (let x = -off1; x < VW; x += TILE) blit(skyline, x, farBase - skyline.height);
       if (skyTower && Math.sin(t * 2.2) > 0.2) {
@@ -1448,11 +1464,8 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       return;
     }
     if (TH.backdrop === "foundry") {
-      const sky = ctx.createLinearGradient(0, 0, 0, VH);
-      sky.addColorStop(0, "#070404"); sky.addColorStop(0.55, "#120806"); sky.addColorStop(1, "#2a1008");
-      ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, VW, VH);
       const farBase = VH * 0.85 - camY * PX * 0.06;
+      if (farBase > skyline.height) { ctx.fillStyle = "#070404"; ctx.fillRect(0, 0, VW, farBase - skyline.height + 1); }
       const off1 = mod(camX * PX * 0.1, TILE);
       for (let x = -off1; x < VW; x += TILE) blit(skyline, x, farBase - skyline.height);
       // The far pour breathes: a warm glow along the floor of the hall.
@@ -1470,11 +1483,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       ctx.fillRect(0, midBase - 1, VW, VH - midBase + 1);
       return;
     }
-    // Indoors: the city is seen through the wall's windows.
-    const sky = ctx.createLinearGradient(0, 0, 0, VH);
-    sky.addColorStop(0, "#03060d"); sky.addColorStop(1, "#0b1222");
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, VW, VH);
+    // Indoors: the city (with its sky baked in) is seen through the wall's windows; the wall covers the rest.
     const wy = VH * 0.5 - wallTile.height * 0.5 - (camY - 4) * PX * 0.3;
     const farBase = wy + wallTile.height * 0.62;
     const off1 = mod(camX * PX * 0.08, TILE);
@@ -2180,47 +2189,74 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     g.fillStyle = `rgba(0,0,0,${TH.dark})`;
     g.fillRect(0, 0, VW, VH);
     g.globalCompositeOperation = "destination-out";
+    const hole = radialSprite("hole", [[0, "#000"], [0.45, "rgba(0,0,0,0.45)"], [1, "rgba(0,0,0,0)"]]);
     for (const L of list) {
       const X = sx(L.x), Y = sy(L.y), r = L.r * PX;
-      const grd = g.createRadialGradient(X, Y, 0, X, Y, r);
-      grd.addColorStop(0, `rgba(0,0,0,${L.i})`);
-      grd.addColorStop(0.45, `rgba(0,0,0,${L.i * 0.45})`);
-      grd.addColorStop(1, "rgba(0,0,0,0)");
-      g.fillStyle = grd;
-      g.fillRect(X - r, Y - r, r * 2, r * 2);
+      g.globalAlpha = L.i;
+      g.drawImage(hole, X - r, Y - r, r * 2, r * 2);
     }
+    g.globalAlpha = 1;
     wctx.globalCompositeOperation = "source-atop";
     wctx.drawImage(lcv, 0, 0, VW, VH);
     wctx.globalCompositeOperation = "source-over";
   }
 
-  function drawGlows(list) {
+  // Radial falloffs are drawn once into small sprites and then scaled, instead of building gradients every frame.
+  const spriteCache = new Map();
+  function radialSprite(key, stops) {
+    let c = spriteCache.get(key);
+    if (c) return c;
+    c = document.createElement("canvas");
+    c.width = c.height = 128;
+    const g = c.getContext("2d"), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    for (const [o, col] of stops) gr.addColorStop(o, col);
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+    spriteCache.set(key, c);
+    return c;
+  }
+  const tintSprite = ([r, g, b]) => radialSprite(`t${r},${g},${b}`, [[0, `rgb(${r},${g},${b})`], [1, `rgba(${r},${g},${b},0)`]]);
+  const bulbSprite = ([r, g, b]) => radialSprite(`b${r},${g},${b}`, [[0, "rgba(255,255,255,0.9)"], [0.3, `rgba(${r},${g},${b},0.6)`], [1, `rgba(${r},${g},${b},0)`]]);
+
+  // Soft light (tints, cones and the bloom) is soft anyway, so it is gathered in the half-res layer
+  // and added to the screen in a single pass.
+  function drawSoftLight(list) {
+    const g = gctx;
+    g.globalCompositeOperation = "source-over";
+    g.clearRect(0, 0, VW, VH);
+    g.globalCompositeOperation = "lighter";
+    for (const L of list) {
+      const [r, gg, b] = L.c;
+      const X = sx(L.x), Y = sy(L.y), rad = L.r * PX;
+      g.globalAlpha = TH.glow * L.i;
+      g.drawImage(tintSprite(L.c), X - rad, Y - rad, rad * 2, rad * 2);
+      g.globalAlpha = 1;
+      if (L.cone !== undefined) {
+        const top = Y, bot = sy(L.cone), w0 = (L.wide ? 0.7 : 0.25) * PX, w1 = (L.wide ? 2.4 : 1.6) * PX;
+        const cg = g.createLinearGradient(0, top, 0, bot);
+        cg.addColorStop(0, `rgba(${r},${gg},${b},${0.12 * L.i})`);
+        cg.addColorStop(1, `rgba(${r},${gg},${b},0)`);
+        g.fillStyle = cg;
+        g.beginPath(); g.moveTo(X - w0, top); g.lineTo(X + w0, top); g.lineTo(X + w1, bot); g.lineTo(X - w1, bot); g.closePath(); g.fill();
+      }
+    }
+    drawSteam(g, time);
+    if (bloomOn && sampleBloom()) { g.globalAlpha = 0.8; g.drawImage(bl1, 0, 0, VW, VH); g.globalAlpha = 1; }
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.drawImage(gcv, 0, 0, VW, VH);
+    ctx.restore();
+  }
+
+  // Small, sharp light: bulbs, arcs, beams and sparks, at full resolution.
+  function drawBright(list) {
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     for (const L of list) {
-      const [r, g, b] = L.c;
-      const X = sx(L.x), Y = sy(L.y), rad = L.r * PX;
-      const tint = ctx.createRadialGradient(X, Y, 0, X, Y, rad);
-      tint.addColorStop(0, `rgba(${r},${g},${b},${TH.glow * L.i})`);
-      tint.addColorStop(1, `rgba(${r},${g},${b},0)`);
-      ctx.fillStyle = tint;
-      ctx.fillRect(X - rad, Y - rad, rad * 2, rad * 2);
-      if (!L.noBulb) {
-        const bulb = ctx.createRadialGradient(X, Y, 0, X, Y, 0.35 * PX);
-        bulb.addColorStop(0, `rgba(255,255,255,${0.9 * L.i})`);
-        bulb.addColorStop(0.3, `rgba(${r},${g},${b},${0.6 * L.i})`);
-        bulb.addColorStop(1, `rgba(${r},${g},${b},0)`);
-        ctx.fillStyle = bulb; ctx.fillRect(X - 0.35 * PX, Y - 0.35 * PX, 0.7 * PX, 0.7 * PX);
-      }
-      if (L.cone !== undefined) {
-        const top = Y, bot = sy(L.cone), w0 = (L.wide ? 0.7 : 0.25) * PX, w1 = (L.wide ? 2.4 : 1.6) * PX;
-        const cg = ctx.createLinearGradient(0, top, 0, bot);
-        cg.addColorStop(0, `rgba(${r},${g},${b},${0.12 * L.i})`);
-        cg.addColorStop(1, `rgba(${r},${g},${b},0)`);
-        ctx.fillStyle = cg;
-        ctx.beginPath(); ctx.moveTo(X - w0, top); ctx.lineTo(X + w0, top); ctx.lineTo(X + w1, bot); ctx.lineTo(X - w1, bot); ctx.closePath(); ctx.fill();
-      }
+      if (L.noBulb) continue;
+      ctx.globalAlpha = L.i;
+      ctx.drawImage(bulbSprite(L.c), sx(L.x) - 0.35 * PX, sy(L.y) - 0.35 * PX, 0.7 * PX, 0.7 * PX);
     }
+    ctx.globalAlpha = 1;
     // Arcs across live plates.
     for (const z of zaps) {
       if (!zapOn(z, time) || !onScreenX(z.x0, z.x1, 4)) continue;
@@ -2265,7 +2301,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     ctx.restore();
   }
 
-  // Self-lit things drawn over the darkness: molten metal and the steam plumes.
+  // Self-lit things drawn over the darkness: molten metal.
   function drawHot(t) {
     for (const m of melts) {
       if (!onScreenX(m.x0, m.x1, 4)) continue;
@@ -2285,6 +2321,11 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
         ctx.beginPath(); ctx.ellipse(sx(cx), top + 0.05 * PX, (0.18 + (i % 3) * 0.08) * PX, 0.035 * PX, 0, 0, 6.283); ctx.fill();
       }
     }
+  }
+
+  // Steam plumes: soft, so they go into the half-res light layer (added, which on the dark hall looks the same as a haze).
+  function drawSteam(g, t) {
+    const puff = radialSprite("puff", [[0, "rgb(235,220,205)"], [1, "rgba(235,220,205,0)"]]);
     for (const v of vents) {
       if (!onScreenX(v.x0 - 1, v.x1 + 1, 6)) continue;
       const on = ventOn(v, t), warn = ventWarn(v, t);
@@ -2294,20 +2335,26 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
         const ph = mod(t * (on ? 0.55 : 0.9) + k / N, 1), y = v.y - ph * (on ? v.h * 0.9 : 0.8);
         const x = cx + Math.sin(k * 12.9 + t * 1.3) * half * (0.45 + ph * 0.6);
         const rad = (0.45 + ph * (on ? 1.1 : 0.3)) * PX, a = (on ? 0.22 : 0.09) * (1 - ph) * Math.min(1, ph * 6);
-        const pg = ctx.createRadialGradient(sx(x), sy(y), 0, sx(x), sy(y), rad);
-        pg.addColorStop(0, `rgba(235,220,205,${a.toFixed(3)})`); pg.addColorStop(1, "rgba(235,220,205,0)");
-        ctx.fillStyle = pg; ctx.fillRect(sx(x) - rad, sy(y) - rad, rad * 2, rad * 2);
+        g.globalAlpha = a;
+        g.drawImage(puff, sx(x) - rad, sy(y) - rad, rad * 2, rad * 2);
       }
+      g.globalAlpha = 1;
     }
   }
 
   // ===================== Loop =====================
   let last = performance.now(), acc = 0, hudTick = 0;
   const STEP = 1 / 240;
+  // "#perf" in the address shows a small frame meter, for checking real phones.
+  const perfEl = /perf/.test(location.hash) ? document.body.appendChild(Object.assign(document.createElement("div"), {
+    style: "position:fixed;left:6px;top:6px;z-index:99;font:11px ui-monospace,monospace;color:#7dff9a;background:rgba(0,0,0,.7);padding:3px 6px;pointer-events:none",
+  })) : null;
+  let perfN = 0, perfWork = 0, perfGap = 0;
   function frame(now) {
     const rawMs = now - last;
     const dt = clamp((now - last) / 1000, 0, 0.05);
     last = now;
+    const workT0 = performance.now();
     watchPerf(rawMs, dt);
     dangerNow = fallDanger();
     if (!powered) { updateGlare(dt, now); requestAnimationFrame(frame); return; }
@@ -2345,9 +2392,9 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     const L = lights(time);
     applyLighting(L);
     ctx.drawImage(wcv, 0, 0, VW, VH);
-    drawGlows(L);
     drawHot(time);
-    applyBloom();
+    drawBright(L);
+    drawSoftLight(L);
     // Round the screen corners in the drawing itself (cheaper than clipping the canvas layer).
     ctx.save();
     ctx.globalCompositeOperation = "destination-out";
@@ -2375,6 +2422,10 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) $("toast").style.opacity = "0"; }
 
     updateGlare(dt, now);
+    if (perfEl) {
+      perfWork += performance.now() - workT0; perfGap += rawMs;
+      if (++perfN === 30) { perfEl.textContent = `${Math.round(30000 / perfGap)} fps · ${(perfWork / 30).toFixed(1)} ms · ${cvs.width}px ${DPR}x`; perfN = perfWork = perfGap = 0; }
+    }
     requestAnimationFrame(frame);
   }
 
@@ -2677,8 +2728,8 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
   const bl2 = document.createElement("canvas"), bl2x = bl2.getContext("2d");
   let bloomOn = true, bloomTick = 0;
   try { if (localStorage.getItem("gyron.bloom") === "0") bloomOn = false; } catch (_) {}
-  function applyBloom() {
-    if (!bloomOn) return;
+  // Refreshes the small glow image (bl1); the soft-light pass adds it to the screen.
+  function sampleBloom() {
     const w1 = Math.max(8, Math.round(VW / 4)), h1 = Math.max(8, Math.round(VH / 4));
     if (bl1.width !== w1 || bl1.height !== h1) {
       bl1.width = w1; bl1.height = h1;
@@ -2697,12 +2748,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
       bl1x.imageSmoothingEnabled = true;
       bl1x.drawImage(bl2, 0, 0, w1, h1);
     }
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "medium";
-    ctx.globalAlpha = 0.8; ctx.drawImage(bl1, 0, 0, VW, VH);
-    ctx.restore();
+    return true;
   }
 
   // Full screen in the browser. Browsers only allow it from a tap, so it rides on power-on.
@@ -2721,12 +2767,12 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     if ((document.fullscreenElement || document.webkitFullscreenElement) && fn) { try { const p = fn.call(document); if (p && p.catch) p.catch(() => {}); } catch (_) {} }
   }
 
-  // If frames run long for a while, drop the game screen to 1x resolution.
+  // If frames keep missing 60 fps, step the game screen's resolution down (1.5x → 1.25x → 1x).
   let slowT = 0;
   function watchPerf(rawMs, dt) {
-    if (!started || paused || maxDPR <= 1) return;
-    if (rawMs > 25) slowT += dt; else slowT = Math.max(0, slowT - dt * 0.5);
-    if (slowT > 1.5) { maxDPR = 1; slowT = 0; resize(); }
+    if (!started || paused || maxDPR <= 1 || (window.devicePixelRatio || 1) <= 1) return;
+    if (rawMs > 20) slowT += dt; else slowT = Math.max(0, slowT - dt * 0.5);
+    if (slowT > 1.5) { maxDPR = maxDPR > 1.25 ? 1.25 : 1; slowT = 0; resize(); }
   }
 
   // Baked wear: grain, scratches, scuffs, dust and edge grime. Drawn once per layout.
