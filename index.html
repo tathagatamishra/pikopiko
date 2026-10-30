@@ -331,16 +331,18 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
 .speaker i { width: 4px; height: 16px; border-radius: 3px; background: rgba(0,0,0,0.55); box-shadow: inset 0 2px 2px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.4); }
 
 /* Power slider, centred at the top of the panel */
-.power { position: absolute; left: 50%; top: 13px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; z-index: 2; }
-.pw-lbl { display: flex; justify-content: space-between; width: 58px; padding: 0 3px; font: 700 7.5px/1 var(--font-print); letter-spacing: 0.12em; color: var(--print); }
-.pw-lbl i { font-style: normal; opacity: 0.45; transition: opacity 0.2s; }
-.console:not(.on) .pw-lbl i:first-child, .console.on .pw-lbl i:last-child { opacity: 1; }
-.land .power { left: auto; right: 16px; transform: none; top: 11px; }
+.power { position: absolute; left: 50%; top: 22px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; z-index: 2; }
+/* OFF/ON are printed inside the track, each in the half the knob leaves open. */
+.pw-lbl { position: absolute; inset: 0; pointer-events: none; font: 500 7.5px/1 var(--font-print); letter-spacing: 0.12em; color: rgba(236,238,244,0.7); }
+.pw-lbl i { position: absolute; top: 0; bottom: 0; width: 26px; display: flex; align-items: center; justify-content: center; font-style: normal; opacity: 0; transition: opacity 0.2s;
+  transform: translateY(1px); /* the capitals ride high in Chakra Petch's line box */ }
+.pw-lbl .pw-on { left: 1px; }
+.pw-lbl .pw-off { right: 1px; }
+.console:not(.on) .pw-lbl .pw-off, .console.on .pw-lbl .pw-on { opacity: 1; }
+.land .power { left: auto; right: 16px; transform: none; top: 20px; }
 .power .slot { position: relative; width: 58px; height: 22px; border-radius: 11px; background: color-mix(in srgb, var(--pill) 60%, #000); box-shadow: inset 0 2px 4px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.45); }
 .power .knob { position: absolute; top: 2px; left: 2px; width: 30px; height: 18px; border-radius: 9px; background: linear-gradient(var(--shell-hi), var(--shell-lo)); box-shadow: 0 1px 2px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.6); transition: transform 0.25s cubic-bezier(.3,1.5,.6,1); }
 .console.on .power .knob { transform: translateX(24px); }
-.console:not(.on) .power .slot { animation: nudge 1.6s ease-in-out infinite; }
-@keyframes nudge { 0%, 100% { box-shadow: inset 0 2px 4px rgba(0,0,0,0.55), 0 0 0 0 rgba(255,176,86,0); } 50% { box-shadow: inset 0 2px 4px rgba(0,0,0,0.55), 0 0 0 5px rgba(255,176,86,0.5); } }
 
 /* D-pad */
 .dpad { --dp: clamp(96px, calc((min(100vw - 16px, 520px) - 84px) / 2), 138px); position: relative; flex: none; width: var(--dp); height: var(--dp); }
@@ -410,7 +412,6 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) {
   .boot-logo.drop { animation-duration: 0.3s; }
   .lcd-prompt, .lcd-panel .cta { animation: none; }
-  .console:not(.on) .power .slot { animation: none; }
 }
 </style>
 </head>
@@ -471,7 +472,7 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
 
     <div class="controls">
       <div class="half left">
-        <div class="row"><div class="speaker" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div><button class="power" id="powerBtn" type="button" aria-label="Power switch"><span class="slot"><i class="knob"></i></span><span class="pw-lbl" aria-hidden="true"><i>OFF</i><i>ON</i></span></button></div>
+        <div class="row"><div class="speaker" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div><button class="power" id="powerBtn" type="button" aria-label="Power switch"><span class="slot"><span class="pw-lbl" aria-hidden="true"><i class="pw-on">ON</i><i class="pw-off">OFF</i></span><i class="knob"></i></span></button></div>
         <div class="mid">
           <div class="dpad" id="dpad">
             <div class="dpad-well"></div>
@@ -2907,7 +2908,10 @@ button:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
     const W = window.innerWidth, H = window.innerHeight, land = W > H;
     document.documentElement.classList.toggle("land", land);
     placeStickers();
-    const scr = land ? Math.min(H - 16 - 32 - 14, W - 16 - 32 - 28 - 2 * 190) : Math.min(W - 16 - 40 - 14, H - 16 - 46 - 14 - 22 - 300 - 24);
+    // Portrait: the body is capped at 520 px wide, so size the screen from the body, not the window,
+    // keeping the body's 20 px side padding clear around the bezel.
+    const bodyW = Math.min(W - 16, 520);
+    const scr = land ? Math.min(H - 16 - 32 - 14, W - 16 - 32 - 28 - 2 * 190) : Math.min(bodyW - 40 - 14, H - 16 - 46 - 14 - 22 - 300 - 24);
     document.documentElement.style.setProperty("--scr", Math.floor(Math.max(150, scr)) + "px");
     clearTimeout(bakeTimer);
     bakeTimer = setTimeout(() => requestAnimationFrame(bakeWear), 120);
